@@ -107,8 +107,9 @@
           bulkButton = document.createElement('button');
           bulkButton.type = 'button';
           bulkButton.className = 'wm-tool-button';
-          bulkButton.textContent = 'Charger les prix';
-          bulkButton.title = 'Choisir les raretés dont tu veux charger ou actualiser les prix';
+          bulkButton.id = 'wm-bulk-launch';
+          bulkButton.textContent = 'Actualiser les prix';
+          bulkButton.title = 'Actualiser les prix moyens du marché pour votre collection';
           bulkButton.addEventListener('click', () => {
             handleBulkClick().catch((error) => reportError('chargement', error));
           });
@@ -119,8 +120,9 @@
           rankingButton = document.createElement('button');
           rankingButton.type = 'button';
           rankingButton.className = 'wm-tool-button';
-          rankingButton.textContent = 'Plus chères';
-          rankingButton.title = 'Affiche toute la collection triée par prix moyen décroissant';
+          rankingButton.id = 'wm-ranking-launch';
+          rankingButton.textContent = 'Classement';
+          rankingButton.title = 'Afficher les cartes de la collection classées par prix moyen décroissant';
           rankingButton.addEventListener('click', () => {
             runtime.ranking.openRankingModal().catch((error) => {
               reportError('classement', error);
@@ -178,11 +180,11 @@
           modal.className = 'wm-modal wm-confirm-modal wm-rarity-modal';
 
           const title = document.createElement('h2');
-          title.textContent = 'Quels prix mettre à jour ?';
+          title.textContent = 'Actualisation des prix moyens';
 
           const text = document.createElement('p');
           text.className = 'wm-rarity-explanation';
-          text.textContent = 'Choisis les raretés à charger. Les nouvelles cartes visibles se chargent déjà automatiquement.';
+          text.textContent = 'Sélectionnez les raretés à actualiser depuis le marché. Les nouvelles cartes ouvertes se mettent déjà à jour automatiquement.';
 
           const tip = document.createElement('p');
           tip.className = 'wm-rarity-tip';
@@ -230,10 +232,10 @@
           missingText.className = 'wm-missing-text';
 
           const missingTitle = document.createElement('strong');
-          missingTitle.textContent = 'Uniquement les cartes non chargées';
+          missingTitle.textContent = 'Uniquement les cartes sans prix';
 
           const missingDescription = document.createElement('span');
-          missingDescription.textContent = 'Idéal après avoir ajouté de nouvelles cartes : seules celles qui n’ont encore aucun prix en cache seront chargées.';
+          missingDescription.textContent = 'Gain de temps : seules les cartes qui n’ont pas encore de cote estimée seront analysées.';
 
           missingText.append(missingTitle, missingDescription);
           missingOption.append(missingInput, missingText);
@@ -241,7 +243,7 @@
           const updateMissingState = () => {
             onlyUnloaded = missingInput.checked;
             const submit = modal.querySelector('[data-wm-price-submit]');
-            if (submit) submit.textContent = onlyUnloaded ? 'Charger les prix manquants' : 'Actualiser ces raretés';
+            if (submit) submit.textContent = onlyUnloaded ? 'Estimer les cartes manquantes' : 'Actualiser les prix sélectionnés';
             missingOption.classList.toggle('is-selected', onlyUnloaded);
           };
 
@@ -358,7 +360,7 @@
         bulkOnlyUnloaded = false;
         setBulkButtonState(doneLabel, false);
         setTimeout(() => {
-          if (!bulkActive) setBulkButtonState('Charger les prix', false);
+          if (!bulkActive) setBulkButtonState('Actualiser les prix', false);
         }, 2200);
       }
 
@@ -369,7 +371,7 @@
         setBulkButtonState('Erreur', false);
         runtime.modalUi.showInfoModal('Chargement impossible', message || 'Impossible de charger toute la collection pour le moment.');
         setTimeout(() => {
-          if (!bulkActive) setBulkButtonState('Charger les prix', false);
+          if (!bulkActive) setBulkButtonState('Actualiser les prix', false);
         }, 2200);
       }
 

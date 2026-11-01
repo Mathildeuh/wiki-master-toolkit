@@ -210,9 +210,9 @@
         const bar = document.getElementById('wm-tools-bar');
         if (!bar || document.getElementById('wm-discard-launch')) return;
         const button = document.createElement('button'); button.type = 'button'; button.className = 'wm-tool-button'; button.id = 'wm-discard-launch';
-        button.textContent = 'Discard'; button.title = 'Préparer la défausse des exemplaires dont le prix moyen est inférieur ou égal au seuil choisi';
+        button.textContent = 'Défausse'; button.title = 'Préparer la défausse automatique des exemplaires sous un prix moyen choisi';
         button.addEventListener('click', openDialog);
-        const ranking = [...bar.querySelectorAll('button')].find(element => element.textContent === 'Plus chères');
+        const ranking = document.getElementById('wm-ranking-launch') || [...bar.querySelectorAll('button')].find(element => element.id === 'wm-ranking-launch' || element.textContent === 'Classement' || element.textContent === 'Plus chères');
         if (ranking) ranking.insertAdjacentElement('afterend', button); else bar.append(button);
       }
       function openDialog() {
@@ -220,10 +220,10 @@
         const element = (tag, className, text) => { const node = document.createElement(tag); if (className) node.className = className; if (text != null) node.textContent = text; return node; };
         const overlay = element('div', 'wm-modal-overlay'); overlay.id = 'wm-discard-dialog';
         const modal = element('div', 'wm-modal wm-discard-modal'); modal.setAttribute('role', 'dialog'); modal.setAttribute('aria-modal', 'true'); modal.setAttribute('aria-labelledby', 'wm-discard-heading');
-        const heading = element('h2', '', 'Défausse intelligente'); heading.id = 'wm-discard-heading';
-        const note = element('p', '', 'Sélection depuis le même cache que « Plus chères », en prix croissants. Moy. — après une requête réussie = 0 W pour cette sélection. Erreurs API, prix en attente et cartes jamais analysées sont exclus.');
-        const protectedNote = element('p', 'wm-discard-protection', 'Toujours conservés : favoris, cartes brillantes, cartes en échange ou en vente. Aucune carte n’est défaussée avant ta confirmation.');
-        const label = element('label', 'wm-discard-threshold', 'Prix moyen maximal (W) : ');
+        const heading = element('h2', '', 'Défausse automatique par prix'); heading.id = 'wm-discard-heading';
+        const note = element('p', '', 'Sélectionne automatiquement les cartes dont le prix moyen estimé est inférieur ou égal à votre seuil. Les cartes non estimées ou en cours de calcul sont exclues.');
+        const protectedNote = element('p', 'wm-discard-protection', 'Protection automatique : vos cartes favorites, brillantes, en vente ou en échange ne sont jamais défaussées. Rien n’est supprimé sans votre confirmation finale.');
+        const label = element('label', 'wm-discard-threshold', 'Prix moyen maximum (W) : ');
         const input = element('input'); input.type = 'number'; input.min = '0'; input.step = 'any'; input.value = '0'; input.id = 'wm-discard-threshold'; input.setAttribute('aria-label', 'Prix moyen maximal (W)'); label.append(input);
         const rarityFilter = element('fieldset', 'wm-discard-filters');
         rarityFilter.append(element('legend', '', 'Raretés à défausser'));

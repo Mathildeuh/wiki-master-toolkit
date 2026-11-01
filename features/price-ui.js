@@ -351,14 +351,14 @@
         optDesc.className = baseClass + ' wm-resale-sort-option';
         optDesc.setAttribute('data-wm-sort', 'price-desc');
         optDesc.setAttribute('tabindex', '0');
-        optDesc.innerHTML = '<span class="flex items-center gap-1.5 font-medium"><span style="color:#34d399;font-weight:700;">✦</span> <span>Prix de revente ↓</span></span><span class="text-xs text-[var(--color-foreground)]/50">Moy. max</span>';
+        optDesc.innerHTML = '<span class="flex items-center gap-1.5 font-medium"><span style="color:#34d399;font-weight:700;">✦</span> <span>Prix décroissant</span></span><span class="text-xs text-[var(--color-foreground)]/50">Du + cher</span>';
 
         const optAsc = document.createElement('div');
         optAsc.role = 'option';
         optAsc.className = baseClass + ' wm-resale-sort-option';
         optAsc.setAttribute('data-wm-sort', 'price-asc');
         optAsc.setAttribute('tabindex', '0');
-        optAsc.innerHTML = '<span class="flex items-center gap-1.5 font-medium"><span style="color:#34d399;font-weight:700;">✦</span> <span>Prix de revente ↑</span></span><span class="text-xs text-[var(--color-foreground)]/50">Moy. min</span>';
+        optAsc.innerHTML = '<span class="flex items-center gap-1.5 font-medium"><span style="color:#34d399;font-weight:700;">✦</span> <span>Prix croissant</span></span><span class="text-xs text-[var(--color-foreground)]/50">Du - cher</span>';
 
         function applyResaleSort(dir) {
           activeCollectionResaleSort = dir;
@@ -369,7 +369,7 @@
           if (sortBtn) {
             const labelEl = sortBtn.querySelector('span span') || sortBtn.querySelector('span');
             if (labelEl) {
-              labelEl.textContent = dir === 'desc' ? 'Prix de revente ↓' : 'Prix de revente ↑';
+              labelEl.textContent = dir === 'desc' ? 'Prix décroissant' : 'Prix croissant';
             }
             sortBtn.click();
           }

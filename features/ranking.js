@@ -203,11 +203,11 @@
 
         const headingWrap = document.createElement('div');
         const title = document.createElement('h2');
-        title.textContent = 'Cartes les plus chères';
+        title.textContent = 'Classement par valeur';
 
         const subtitle = document.createElement('p');
         const pricedCount = rows.filter((row) => Number.isFinite(row.average)).length;
-        subtitle.textContent = `${rows.length} cartes du cache • ${pricedCount} avec un prix moyen${collectionFetchedAt ? ` • données collection il y a ${humanElapsed(collectionFetchedAt)}` : ''}`;
+        subtitle.textContent = `${rows.length} cartes analysées • ${pricedCount} avec un prix moyen estimé${collectionFetchedAt ? ` • Mis à jour (${humanElapsed(collectionFetchedAt)})` : ''}`;
 
         headingWrap.append(title, subtitle);
 
@@ -241,7 +241,7 @@
         priceField.className = 'wm-ranking-sale-field';
 
         const priceLabel = document.createElement('span');
-        priceLabel.textContent = 'Prix de mise en vente';
+        priceLabel.textContent = 'Mise de départ (W) :';
 
         const priceInput = document.createElement('input');
         priceInput.type = 'number';
@@ -256,7 +256,7 @@
         durationField.className = 'wm-ranking-sale-field';
 
         const durationLabel = document.createElement('span');
-        durationLabel.textContent = 'Durée';
+        durationLabel.textContent = 'Durée de vente :';
 
         const durationInput = document.createElement('select');
 

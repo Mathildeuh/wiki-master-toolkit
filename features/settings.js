@@ -49,8 +49,8 @@
             ['collectionPrices', 'Prix moyens dans la collection', 'Affiche les badges de prix moyen directement sur les cartes de la collection.'],
             ['marketplacePrice', 'Prix moyen sur Marketplace', 'Affiche le prix moyen sur la fiche d’une annonce Marketplace.'],
             ['globalCollectionPrice', 'Prix dans la collection globale', 'Affiche le prix moyen quand une carte est inspectée dans la collection globale.'],
-            ['bulkPriceLoader', 'Chargement massif des prix', 'Ajoute « Charger les prix » avec sélection des raretés.'],
-            ['ranking', 'Classement « Plus chères »', 'Ajoute le classement des cartes connues par prix moyen.'],
+            ['bulkPriceLoader', 'Actualisation des prix', 'Ajoute le bouton « Actualiser les prix » avec sélection par rareté.'],
+            ['ranking', 'Classement de la collection', 'Ajoute le classement des cartes possédées par cote et valeur.'],
             ['rankingSales', 'Mise en vente depuis le classement', 'Affiche les contrôles pour mettre directement une carte en vente depuis le classement.'],
             ['compactMode', 'Mode compact', 'Ajoute le bouton Compact dans les vues collection.']
           ]
