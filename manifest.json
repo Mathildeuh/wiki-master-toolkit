@@ -61,7 +61,10 @@
     "https://www.wiki-masters.com/*",
     "https://www.wikidata.org/*",
     "https://query.wikidata.org/*",
-    "https://fr.wikipedia.org/*"
+    "https://fr.wikipedia.org/*",
+    "https://en.wikipedia.org/*",
+    "https://commons.wikimedia.org/*",
+    "https://upload.wikimedia.org/*"
   ],
   "manifest_version": 3,
   "name": "Wiki Master Toolkit",

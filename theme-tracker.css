@@ -2,9 +2,9 @@
 
 .wm-family-page,
 .wm-family-modal-overlay {
-  --wm-family-accent: #8b5cf6;
-  --wm-family-accent-soft: rgba(139, 92, 246, 0.12);
-  --wm-family-accent-border: rgba(168, 85, 247, 0.36);
+  --wm-family-accent: #34d399;
+  --wm-family-accent-soft: rgba(16, 185, 129, 0.12);
+  --wm-family-accent-border: rgba(16, 185, 129, 0.28);
   --wm-family-muted: color-mix(in srgb, var(--color-foreground) 52%, transparent);
   --wm-family-faint: color-mix(in srgb, var(--color-foreground) 38%, transparent);
 }
@@ -12,16 +12,16 @@
 /* Navigation */
 
 .wm-family-nav {
-  border: 1px solid rgba(168, 85, 247, 0.24) !important;
-  background: rgba(124, 58, 237, 0.07) !important;
-  color: rgb(196, 181, 253) !important;
+  border: 1px solid rgba(16, 185, 129, 0.24) !important;
+  background: rgba(16, 185, 129, 0.08) !important;
+  color: #6ee7b7 !important;
   text-decoration: none !important;
 }
 
 .wm-family-nav:hover,
 .wm-family-nav.is-active {
-  border-color: rgba(192, 132, 252, 0.48) !important;
-  background: rgba(124, 58, 237, 0.14) !important;
+  border-color: rgba(52, 211, 153, 0.48) !important;
+  background: rgba(16, 185, 129, 0.16) !important;
   color: #fff !important;
 }
 
@@ -29,7 +29,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: rgb(192, 132, 252);
+  color: #34d399;
 }
 
 html.wm-theme-route main > :not(#wm-theme-tracker-page) {
@@ -148,14 +148,14 @@ html.wm-theme-route main > :not(#wm-theme-tracker-page) {
 
 .wm-family-primary {
   border: 1px solid rgba(192, 132, 252, 0.46);
-  background: #7c3aed;
+  background: #0f261c; border-color: rgba(16, 185, 129, 0.35); color: #34d399;
   color: #fff;
   box-shadow: 0 4px 16px rgba(76, 29, 149, 0.14);
 }
 
 .wm-family-primary:hover:not(:disabled) {
   border-color: rgba(216, 180, 254, 0.64);
-  background: #8b5cf6;
+  background: #153527; color: #6ee7b7;
 }
 
 .wm-family-secondary {
@@ -199,7 +199,7 @@ html.wm-theme-route main > :not(#wm-theme-tracker-page) {
 }
 
 .wm-family-link-button:hover {
-  color: rgb(196, 181, 253);
+  color: #6ee7b7;
 }
 
 .wm-family-primary:focus-visible,
@@ -331,7 +331,7 @@ html.wm-theme-route main > :not(#wm-theme-tracker-page) {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #7c3aed, #a78bfa);
+  background: #34d399;
   transition: width 180ms ease;
 }
 
@@ -407,7 +407,7 @@ html.wm-theme-route main > :not(#wm-theme-tracker-page) {
   padding: 6px 9px;
   border: 1px solid rgba(168, 85, 247, 0.22);
   border-radius: 9px;
-  background: rgba(124, 58, 237, 0.07);
+  background: rgba(16, 185, 129, 0.08);
   color: var(--wm-family-muted);
   font-size: 10px;
 }
@@ -417,7 +417,7 @@ html.wm-theme-route main > :not(#wm-theme-tracker-page) {
 }
 
 .wm-family-edit-banner strong {
-  color: rgb(196, 181, 253);
+  color: #6ee7b7;
   font-size: 10px;
 }
 
@@ -436,7 +436,7 @@ html.wm-theme-route main > :not(#wm-theme-tracker-page) {
 
 .wm-family-detail-head > strong {
   flex: 0 0 auto;
-  color: rgb(196, 181, 253);
+  color: #6ee7b7;
   font-size: 18px;
   font-weight: 850;
 }
@@ -636,7 +636,7 @@ html.wm-theme-route main > :not(#wm-theme-tracker-page) {
 .wm-family-cover-button {
   border: 1px solid rgba(168, 85, 247, 0.25);
   background: rgba(124, 58, 237, 0.06);
-  color: rgb(196, 181, 253);
+  color: #6ee7b7;
 }
 
 .wm-family-cover-button:hover:not(:disabled) {
@@ -837,7 +837,7 @@ html.wm-theme-route main > :not(#wm-theme-tracker-page) {
 }
 
 .wm-family-picker-status[data-mode="loading"] {
-  color: rgb(196, 181, 253);
+  color: #6ee7b7;
 }
 
 .wm-family-picker-status[data-mode="error"] {
@@ -875,7 +875,7 @@ html.wm-theme-route main > :not(#wm-theme-tracker-page) {
   place-items: center;
   overflow: hidden;
   border-radius: 8px;
-  background: rgba(124, 58, 237, 0.07);
+  background: rgba(16, 185, 129, 0.08);
   color: rgb(167, 139, 250);
 }
 
@@ -1128,14 +1128,14 @@ html.wm-theme-route main > :not(#wm-theme-tracker-page) {
   width: 0;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #7c3aed, #a78bfa);
+  background: #34d399;
   transition: width 180ms ease;
 }
 
 .wm-family-build-percent {
   display: block;
   margin-top: 6px;
-  color: rgb(196, 181, 253);
+  color: #6ee7b7;
   font-size: 10px;
   font-weight: 850;
   text-align: right;
@@ -1365,9 +1365,9 @@ html.wm-theme-route main > :not(#wm-theme-tracker-page) {
 }
 
 .wm-family-market-summary[data-mode="loading"] {
-  border-color: rgba(168, 85, 247, 0.24);
+  border-color: rgba(16, 185, 129, 0.24);
   background: rgba(124, 58, 237, 0.06);
-  color: rgb(196, 181, 253);
+  color: #6ee7b7;
 }
 
 .wm-family-market-summary[data-mode="error"] {
@@ -1404,7 +1404,7 @@ html.wm-theme-route main > :not(#wm-theme-tracker-page) {
   place-items: center;
   overflow: hidden;
   border-radius: 9px;
-  background: rgba(124, 58, 237, 0.07);
+  background: rgba(16, 185, 129, 0.08);
   color: rgb(167, 139, 250);
 }
 
@@ -1518,7 +1518,7 @@ html.wm-theme-route main > :not(#wm-theme-tracker-page) {
 
 .wm-family-market-more > summary {
   padding: 8px 12px;
-  color: rgb(196, 181, 253);
+  color: #6ee7b7;
   font-size: 9.5px;
   font-weight: 750;
   cursor: pointer;

@@ -3,7 +3,7 @@
 
   registry.core = {
     create() {
-      const VERSION = '1.0.1 RC1';
+      const VERSION = '1.0.2';
       const CACHE_TTL = Infinity;
       const ERROR_CACHE_TTL = 60 * 1000;
       const CACHE_PREFIX = 'wm_avg_v3_';
@@ -22,9 +22,9 @@
       const AUTO_OPEN_MIN_DELAY = AUTO_OPEN_DEFAULT_MIN_MINUTES * 60 * 1000;
       const AUTO_OPEN_MAX_DELAY = AUTO_OPEN_DEFAULT_MAX_MINUTES * 60 * 1000;
       const COMPACT_MODE_KEY = 'wm_compact_mode_v1';
-      const MISSING_IMAGE_CACHE_PREFIX = 'wm_missing_img_v2_';
+      const MISSING_IMAGE_CACHE_PREFIX = 'wm_missing_img_v3_';
       const MISSING_IMAGE_FOUND_TTL = 30 * 24 * 60 * 60 * 1000;
-      const MISSING_IMAGE_MISS_TTL = 7 * 24 * 60 * 60 * 1000;
+      const MISSING_IMAGE_MISS_TTL = 12 * 60 * 60 * 1000;
       const RARITIES = ['L', 'UR', 'SR', 'R', 'PC', 'C'];
       const DEFAULT_RARE_RARITIES = ['L', 'UR', 'SR', 'R'];
 

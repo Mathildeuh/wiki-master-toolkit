@@ -1,6 +1,6 @@
 /* ==========================================================================
    WikiMaster Toolkit — Unified Design System
-   Art Direction: Dark Glass Collector & Gaming Hub
+   Art Direction: Native WikiMasters Collector Interface (Clean, Matte Dark)
    ========================================================================== */
 
 :root,
@@ -8,39 +8,63 @@
 .wm-modal,
 .wm-tools-menu,
 .wm-verification-notice {
-  --wm-bg: #090c12;
-  --wm-surface: rgba(14, 18, 27, 0.94);
-  --wm-surface-solid: #0d111a;
-  --wm-surface-glass: rgba(18, 24, 38, 0.82);
-  --wm-raised: rgba(255, 255, 255, 0.045);
-  --wm-raised-hover: rgba(255, 255, 255, 0.09);
-  --wm-border: rgba(255, 255, 255, 0.08);
-  --wm-border-hover: rgba(167, 139, 250, 0.32);
-  --wm-text: #f1f5f9;
+  /* Native WikiMasters Color Tokens */
+  --wm-bg: #0c0d0c;
+  --wm-surface: #131615;
+  --wm-surface-solid: #131615;
+  --wm-surface-light: #1b1f1d;
+  --wm-surface-glass: rgba(19, 22, 21, 0.96);
+  --wm-raised: #1b1f1d;
+  --wm-raised-hover: #232825;
+  --wm-border: #2e3431;
+  --wm-border-hover: rgba(255, 255, 255, 0.18);
+  --wm-border-subtle: rgba(255, 255, 255, 0.06);
+
+  /* Typography */
+  --wm-text: #f2f4f3;
   --wm-text-bright: #ffffff;
-  --wm-muted: #94a3b8;
-  --wm-faint: #64748b;
-  --wm-accent: #8b5cf6;
-  --wm-accent-light: #a78bfa;
-  --wm-accent-glow: rgba(139, 92, 246, 0.22);
-  --wm-accent-gradient: linear-gradient(135deg, #7c3aed 0%, #6366f1 100%);
-  --wm-accent-gradient-hover: linear-gradient(135deg, #8b5cf6 0%, #4f46e5 100%);
+  --wm-muted: #9ca3af;
+  --wm-faint: #6b7280;
+
+  /* WikiMasters Accent: Signature Emerald (#34d399) */
+  --wm-accent: #34d399;
+  --wm-accent-light: #6ee7b7;
+  --wm-accent-dark: #10b981;
+  --wm-accent-glow: rgba(52, 211, 153, 0.15);
+  --wm-accent-soft: rgba(16, 185, 129, 0.1);
+  --wm-accent-border: rgba(16, 185, 129, 0.28);
+  --wm-accent-gradient: #0f261c;
+  --wm-accent-gradient-hover: #153527;
+
+  /* Status Colors */
   --wm-success: #10b981;
-  --wm-success-soft: rgba(16, 185, 129, 0.12);
-  --wm-success-border: rgba(16, 185, 129, 0.32);
-  --wm-danger: #f43f5e;
-  --wm-danger-bg: rgba(244, 63, 94, 0.12);
-  --wm-danger-border: rgba(244, 63, 94, 0.32);
-  --wm-danger-hover: rgba(244, 63, 94, 0.2);
+  --wm-success-soft: rgba(16, 185, 129, 0.1);
+  --wm-success-border: rgba(16, 185, 129, 0.28);
+  --wm-danger: #ef4444;
+  --wm-danger-bg: rgba(239, 68, 68, 0.09);
+  --wm-danger-border: rgba(239, 68, 68, 0.25);
+  --wm-danger-hover: rgba(239, 68, 68, 0.16);
   --wm-warning: #f59e0b;
-  --wm-warning-soft: rgba(245, 158, 11, 0.14);
-  --wm-radius-sm: 8px;
-  --wm-radius-md: 10px;
-  --wm-radius-lg: 14px;
-  --wm-radius-xl: 18px;
-  --wm-shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.25);
-  --wm-shadow-md: 0 8px 24px -4px rgba(0, 0, 0, 0.45);
-  --wm-shadow-lg: 0 24px 64px -8px rgba(0, 0, 0, 0.7), 0 0 1px 1px rgba(255, 255, 255, 0.06);
+  --wm-warning-soft: rgba(245, 158, 11, 0.1);
+
+  /* Rarity Tokens (Official WikiMasters Palette) */
+  --wm-rarity-c: #b8f2d5;
+  --wm-rarity-pc: #b1cff2;
+  --wm-rarity-r: #c6a7f2;
+  --wm-rarity-sr: #ed6fa3;
+  --wm-rarity-ur: #fa9931;
+  --wm-rarity-l: #ffe144;
+
+  /* Corner Radii matching WikiMasters */
+  --wm-radius-sm: 6px;
+  --wm-radius-md: 8px;
+  --wm-radius-lg: 10px;
+  --wm-radius-xl: 12px;
+
+  /* Clean Shadows: Crisp Inset & Deep Ambient */
+  --wm-shadow-sm: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --wm-shadow-md: 0 4px 14px rgba(0, 0, 0, 0.45);
+  --wm-shadow-lg: 0 20px 48px -6px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 
   color: var(--wm-text);
   font-family: inherit;
@@ -53,7 +77,7 @@ body.wm-dialog-open {
 }
 
 /* --------------------------------------------------------------------------
-   Workspace Toolbar (Floating Navigation Dock)
+   Workspace Toolbar (Native Header Navigation Dock)
    -------------------------------------------------------------------------- */
 .wm-workspace-toolbar {
   display: flex;
@@ -63,11 +87,9 @@ body.wm-dialog-open {
   padding: 8px 12px;
   margin: 16px 0;
   border: 1px solid var(--wm-border);
-  border-radius: var(--wm-radius-lg);
+  border-radius: var(--wm-radius-md);
   background: var(--wm-surface);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  box-shadow: var(--wm-shadow-sm);
   position: relative;
   z-index: 40;
 }
@@ -78,24 +100,23 @@ body.wm-dialog-open {
   gap: 6px;
   padding: 5px 11px;
   margin-right: 4px;
-  background: rgba(139, 92, 246, 0.12);
-  border: 1px solid rgba(139, 92, 246, 0.26);
+  background: var(--wm-surface-light);
+  border: 1px solid var(--wm-border);
   border-radius: 999px;
-  color: #c4b5fd;
+  color: var(--wm-text);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.02em;
   user-select: none;
 }
 
 .wm-toolbar-brand .wm-brand-icon {
-  color: #a78bfa;
+  color: var(--wm-accent);
   font-size: 11px;
-  filter: drop-shadow(0 0 5px rgba(167, 139, 250, 0.6));
 }
 
 .wm-toolbar-brand .wm-brand-title {
-  color: #e2e8f0;
+  color: var(--wm-text-bright);
 }
 
 .wm-toolbar-version {
@@ -103,7 +124,7 @@ body.wm-dialog-open {
 }
 
 /* --------------------------------------------------------------------------
-   Buttons & Micro-interactions
+   Buttons & Micro-interactions (Simple, Flat, Native)
    -------------------------------------------------------------------------- */
 .wm-workspace-toolbar .wm-tool-button,
 .wm-modal .wm-tool-button,
@@ -112,11 +133,11 @@ body.wm-dialog-open {
   padding: 7px 13px;
   border: 1px solid var(--wm-border);
   border-radius: var(--wm-radius-md);
-  background: var(--wm-raised);
+  background: var(--wm-surface-light);
   color: var(--wm-text);
   font: inherit;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1.35;
   box-shadow: var(--wm-shadow-sm);
   cursor: pointer;
@@ -124,7 +145,7 @@ body.wm-dialog-open {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  transition: all 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease;
   user-select: none;
 }
 
@@ -132,49 +153,43 @@ body.wm-dialog-open {
 .wm-modal .wm-tool-button:hover:not(:disabled),
 .wm-tools-menu .wm-tool-button:hover:not(:disabled) {
   border-color: var(--wm-border-hover);
-  background: var(--wm-raised-hover);
+  background: var(--wm-surface-hover);
   color: #ffffff;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
 }
 
 .wm-workspace-toolbar .wm-tool-button:active:not(:disabled),
 .wm-modal .wm-tool-button:active:not(:disabled) {
-  transform: translateY(0);
-  box-shadow: var(--wm-shadow-sm);
+  background: var(--wm-surface);
 }
 
 .wm-modal .wm-primary-button,
 .wm-workspace-toolbar .wm-primary-button {
   background: var(--wm-accent-gradient);
-  color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.35);
-  font-weight: 650;
+  color: var(--wm-accent);
+  border: 1px solid var(--wm-accent-border);
+  font-weight: 600;
 }
 
 .wm-modal .wm-primary-button:hover:not(:disabled),
 .wm-workspace-toolbar .wm-primary-button:hover:not(:disabled) {
   background: var(--wm-accent-gradient-hover);
-  color: #ffffff;
-  transform: translateY(-1.5px);
-  box-shadow: 0 6px 20px rgba(124, 58, 237, 0.5);
+  color: var(--wm-accent-light);
+  border-color: rgba(52, 211, 153, 0.45);
 }
 
 .wm-modal .wm-danger-button,
 .wm-modal .wm-discard-danger {
   background: var(--wm-danger-bg);
-  color: #fda4af;
+  color: #f87171;
   border-color: var(--wm-danger-border);
+  font-weight: 600;
 }
 
 .wm-modal .wm-danger-button:hover:not(:disabled),
 .wm-modal .wm-discard-danger:hover:not(:disabled) {
   background: var(--wm-danger-hover);
   color: #ffffff;
-  border-color: #fb7185;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 14px rgba(244, 63, 94, 0.25);
+  border-color: rgba(239, 68, 68, 0.45);
 }
 
 .wm-quiet-button {
@@ -185,16 +200,15 @@ body.wm-dialog-open {
 }
 
 .wm-quiet-button:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.06) !important;
-  border-color: rgba(255, 255, 255, 0.1) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: transparent !important;
   color: #ffffff !important;
 }
 
 .wm-modal button:disabled,
 .wm-workspace-toolbar button:disabled {
-  opacity: 0.45;
+  opacity: 0.4;
   cursor: not-allowed;
-  transform: none !important;
   box-shadow: none !important;
 }
 
@@ -220,18 +234,19 @@ body.wm-dialog-open {
   border-radius: var(--wm-radius-md);
   padding: 7px 13px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   list-style: none;
-  background: var(--wm-raised);
+  background: var(--wm-surface-light);
   color: var(--wm-text);
-  transition: all 0.15s ease;
+  transition: background-color 0.12s, border-color 0.12s, color 0.12s;
   user-select: none;
+  box-shadow: var(--wm-shadow-sm);
 }
 
 .wm-tools-options > summary:hover {
-  background: var(--wm-raised-hover);
+  background: var(--wm-surface-hover);
   border-color: var(--wm-border-hover);
-  color: #fff;
+  color: #ffffff;
 }
 
 .wm-tools-options > summary::after {
@@ -246,24 +261,32 @@ body.wm-dialog-open {
 .wm-tools-menu {
   position: absolute;
   right: 0;
-  top: calc(100% + 8px);
+  top: calc(100% + 6px);
   z-index: 150;
-  width: min(300px, calc(100vw - 48px));
+  width: min(290px, calc(100vw - 48px));
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px;
+  gap: 6px;
+  padding: 10px;
   background: var(--wm-surface-solid);
   border: 1px solid var(--wm-border);
   border-radius: var(--wm-radius-lg);
   box-shadow: var(--wm-shadow-lg);
-  backdrop-filter: blur(20px);
 }
 
 .wm-tools-menu > button {
   width: 100%;
   text-align: left;
   justify-content: flex-start;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.wm-tools-menu > button:hover:not(:disabled) {
+  background: var(--wm-surface-light);
+  border-color: var(--wm-border);
+  color: #ffffff;
 }
 
 .wm-price-help {
@@ -327,15 +350,15 @@ body.wm-dialog-open {
 }
 
 /* --------------------------------------------------------------------------
-   Modals & Dialog Surfaces
+   Modals & Dialog Surfaces (Native WikiMasters Modal Look)
    -------------------------------------------------------------------------- */
 .wm-modal-overlay {
   padding: 16px;
-  background: rgba(6, 9, 14, 0.78);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: rgba(0, 0, 0, 0.76);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   overscroll-behavior: contain;
-  animation: wmOverlayFade 0.16s ease-out;
+  animation: wmOverlayFade 0.14s ease-out;
 }
 
 @keyframes wmOverlayFade {
@@ -344,8 +367,8 @@ body.wm-dialog-open {
 }
 
 @keyframes wmModalSlideIn {
-  from { opacity: 0; transform: translateY(8px) scale(0.985); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .wm-modal {
@@ -357,14 +380,14 @@ body.wm-dialog-open {
   box-sizing: border-box;
   box-shadow: var(--wm-shadow-lg);
   overscroll-behavior: contain;
-  animation: wmModalSlideIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: wmModalSlideIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .wm-modal h2 {
   font-size: 20px;
   line-height: 1.25;
-  font-weight: 750;
-  letter-spacing: -0.02em;
+  font-weight: 700;
+  letter-spacing: -0.015em;
   color: #ffffff;
   margin: 0;
 }
@@ -372,15 +395,15 @@ body.wm-dialog-open {
 .wm-modal h3 {
   font-size: 15px;
   line-height: 1.35;
-  font-weight: 650;
+  font-weight: 600;
   margin: 0;
-  color: #e2e8f0;
+  color: var(--wm-text);
 }
 
 .wm-modal p {
   color: var(--wm-muted);
   font-size: 13px;
-  line-height: 1.6;
+  line-height: 1.55;
 }
 
 .wm-modal input:not([type=checkbox]):not([type=radio]),
@@ -388,15 +411,16 @@ body.wm-dialog-open {
 .wm-modal textarea {
   box-sizing: border-box;
   min-height: 38px;
-  padding: 8px 11px;
+  padding: 8px 12px;
   border: 1px solid var(--wm-border);
   border-radius: var(--wm-radius-md);
   color: var(--wm-text);
-  background: rgba(8, 11, 17, 0.75);
+  background: var(--wm-surface-light);
   font: inherit;
   font-size: 13px;
   max-width: 100%;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  box-shadow: var(--wm-shadow-sm);
+  transition: border-color 0.12s, box-shadow 0.12s;
 }
 
 .wm-modal input:focus-visible,
@@ -404,7 +428,7 @@ body.wm-dialog-open {
 .wm-modal textarea:focus-visible {
   outline: none;
   border-color: var(--wm-accent);
-  box-shadow: 0 0 0 3px var(--wm-accent-glow);
+  box-shadow: 0 0 0 2px var(--wm-accent-glow);
 }
 
 .wm-modal input[type=checkbox],
@@ -457,36 +481,35 @@ body.wm-dialog-open {
 
 .wm-ranking-close,
 .wm-modal .wm-dialog-close {
-  min-width: 34px;
-  min-height: 34px;
-  width: 34px;
-  height: 34px;
+  min-width: 32px;
+  min-height: 32px;
+  width: 32px;
+  height: 32px;
   padding: 0;
   border: 1px solid var(--wm-border);
   border-radius: var(--wm-radius-md);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--wm-surface-light);
   color: var(--wm-muted);
-  font-size: 20px;
+  font-size: 18px;
   line-height: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: background-color 0.12s, color 0.12s, border-color 0.12s;
 }
 
 .wm-ranking-close:hover,
 .wm-modal .wm-dialog-close:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--wm-surface-hover);
   color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.2);
-  transform: scale(1.05);
+  border-color: var(--wm-border-hover);
 }
 
 .wm-ranking-sale-controls {
   padding: 12px 24px;
   gap: 12px;
-  background: rgba(139, 92, 246, 0.035);
+  background: var(--wm-surface);
   border-bottom: 1px solid var(--wm-border);
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -501,7 +524,6 @@ body.wm-dialog-open {
   font-weight: 500;
   line-height: 1.45;
   margin-top: 4px;
-  animation: wmModalSlideIn 0.15s ease-out;
 }
 
 .wm-ranking-sale-banner.is-success {
@@ -513,7 +535,7 @@ body.wm-dialog-open {
 .wm-ranking-sale-banner.is-error {
   background: var(--wm-danger-bg);
   border: 1px solid var(--wm-danger-border);
-  color: #fda4af;
+  color: #fca5a5;
 }
 
 .wm-ranking-filters {
@@ -523,7 +545,7 @@ body.wm-dialog-open {
   gap: 10px;
   padding: 12px 24px;
   border-bottom: 1px solid var(--wm-border);
-  background: rgba(0, 0, 0, 0.15);
+  background: rgba(0, 0, 0, 0.2);
 }
 
 .wm-ranking-search-input {
@@ -550,24 +572,24 @@ body.wm-dialog-open {
 }
 
 .wm-ranking-row {
-  min-height: 74px;
+  min-height: 70px;
   grid-template-columns: 32px 48px minmax(0, 1fr) auto auto;
   gap: 12px;
   padding: 10px 12px;
   align-items: center;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--wm-border-subtle);
   border-radius: var(--wm-radius-md);
-  transition: background 0.12s ease;
+  transition: background-color 0.1s ease;
 }
 
 .wm-ranking-row:hover {
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--wm-surface-light);
 }
 
 .wm-ranking-rank {
   color: var(--wm-muted);
   font-size: 12px;
-  font-weight: 750;
+  font-weight: 700;
   text-align: center;
 }
 
@@ -575,8 +597,8 @@ body.wm-dialog-open {
   width: 48px;
   height: 58px;
   border-radius: var(--wm-radius-sm);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--wm-border);
+  background: #090b0a;
   overflow: hidden;
   position: relative;
 }
@@ -589,8 +611,8 @@ body.wm-dialog-open {
 
 .wm-ranking-title {
   font-size: 14px;
-  font-weight: 650;
-  color: #fff;
+  font-weight: 600;
+  color: #ffffff;
   line-height: 1.35;
 }
 
@@ -601,31 +623,31 @@ body.wm-dialog-open {
 }
 
 .wm-ranking-price {
-  color: #6ee7b7;
+  color: var(--wm-accent);
   font-size: 15px;
-  font-weight: 750;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
 .wm-ranking-sell-button {
   min-height: 32px;
-  padding: 5px 11px;
+  padding: 5px 12px;
   border-radius: var(--wm-radius-sm);
-  font-size: 11px;
-  font-weight: 650;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .wm-ranking-sell-button[data-state="success"] {
-  border-color: rgba(16, 185, 129, 0.5) !important;
-  background: rgba(16, 185, 129, 0.16) !important;
+  border-color: var(--wm-success-border) !important;
+  background: var(--wm-success-soft) !important;
   color: #6ee7b7 !important;
 }
 
 .wm-ranking-sell-button[data-state="error"] {
-  border-color: rgba(244, 63, 94, 0.45) !important;
-  background: rgba(244, 63, 94, 0.16) !important;
-  color: #fda4af !important;
+  border-color: var(--wm-danger-border) !important;
+  background: var(--wm-danger-bg) !important;
+  color: #fca5a5 !important;
 }
 
 /* --------------------------------------------------------------------------
@@ -639,7 +661,7 @@ body.wm-dialog-open {
 .wm-discard-list {
   border: 1px solid var(--wm-border);
   border-radius: var(--wm-radius-lg);
-  background: rgba(0, 0, 0, 0.15);
+  background: rgba(0, 0, 0, 0.2);
   max-height: min(440px, 48vh);
   overflow-y: auto;
 }
@@ -655,22 +677,23 @@ body.wm-dialog-open {
   border-radius: var(--wm-radius-md);
   padding: 12px 16px;
   margin: 12px 0;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--wm-surface-solid);
 }
 
 .wm-discard-rarity-choice {
   border: 1px solid var(--wm-border);
   border-radius: var(--wm-radius-sm);
   padding: 6px 12px;
-  background: var(--wm-raised);
+  background: var(--wm-surface-light);
   color: var(--wm-muted);
   cursor: pointer;
-  transition: all 0.14s ease;
+  transition: background-color 0.12s, color 0.12s, border-color 0.12s;
 }
 
 .wm-discard-rarity-choice:hover {
-  background: var(--wm-raised-hover);
+  background: var(--wm-surface-hover);
   color: #ffffff;
+  border-color: var(--wm-border-hover);
 }
 
 .wm-discard-row {
@@ -678,15 +701,15 @@ body.wm-dialog-open {
   grid-template-columns: 20px 48px minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
-  min-height: 70px;
+  min-height: 68px;
   padding: 8px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--wm-border-subtle);
   cursor: pointer;
-  transition: background 0.12s;
+  transition: background-color 0.1s ease;
 }
 
 .wm-discard-row:hover {
-  background: rgba(139, 92, 246, 0.06);
+  background: var(--wm-surface-light);
 }
 
 /* --------------------------------------------------------------------------
@@ -703,7 +726,7 @@ body.wm-dialog-open {
   align-items: flex-start;
   justify-content: space-between;
   gap: 18px;
-  padding: 22px 26px;
+  padding: 20px 24px;
   border-bottom: 1px solid var(--wm-border);
   flex-shrink: 0;
 }
@@ -711,11 +734,11 @@ body.wm-dialog-open {
 .wm-eyebrow {
   display: inline-block;
   font-size: 11px;
-  color: var(--wm-accent-light);
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  color: var(--wm-accent);
+  font-weight: 600;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .wm-dialog-header h2 {
@@ -727,7 +750,7 @@ body.wm-dialog-open {
 }
 
 .wm-dialog-body {
-  padding: 20px 24px 24px;
+  padding: 20px 24px;
   overflow-y: auto;
   min-height: 0;
 }
@@ -738,7 +761,7 @@ body.wm-dialog-open {
   border-radius: var(--wm-radius-lg);
   overflow: hidden;
   margin-bottom: 16px;
-  background: rgba(10, 13, 20, 0.65);
+  background: var(--wm-surface-solid);
 }
 
 .wm-section-heading {
@@ -746,8 +769,8 @@ body.wm-dialog-open {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 14px 18px;
-  background: rgba(255, 255, 255, 0.025);
+  padding: 12px 16px;
+  background: var(--wm-surface-light);
   border-bottom: 1px solid var(--wm-border);
 }
 
@@ -756,10 +779,10 @@ body.wm-dialog-open {
   align-items: center;
   justify-content: center;
   font-size: 11px;
-  font-weight: 700;
-  color: #c4b5fd;
-  background: rgba(139, 92, 246, 0.15);
-  border: 1px solid rgba(139, 92, 246, 0.25);
+  font-weight: 600;
+  color: var(--wm-accent);
+  background: var(--wm-accent-soft);
+  border: 1px solid var(--wm-accent-border);
   padding: 2px 8px;
   border-radius: 999px;
 }
@@ -770,12 +793,12 @@ body.wm-dialog-open {
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  transition: background 0.12s;
+  border-bottom: 1px solid var(--wm-border-subtle);
+  transition: background-color 0.1s ease;
 }
 
 .wm-activity-row:hover {
-  background: rgba(255, 255, 255, 0.025);
+  background: var(--wm-surface-light);
 }
 
 .wm-activity-row:has(> button) {
@@ -789,12 +812,12 @@ body.wm-dialog-open {
   width: 46px;
   height: 56px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.04);
+  background: #090b0a;
   border-radius: var(--wm-radius-sm);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--wm-border);
   color: var(--wm-muted);
   font-size: 12px;
-  font-weight: 750;
+  font-weight: 700;
 }
 
 .wm-activity-thumb img {
@@ -807,43 +830,43 @@ body.wm-dialog-open {
 
 .wm-activity-name {
   color: var(--wm-text);
-  font-weight: 650;
+  font-weight: 600;
   font-size: 13.5px;
   line-height: 1.4;
   text-decoration: none;
 }
 
 .wm-activity-name:hover {
-  color: var(--wm-accent-light);
+  color: var(--wm-accent);
   text-decoration: underline;
 }
 
 .wm-rarity-chip {
-  color: var(--wm-accent-light);
+  color: var(--wm-accent);
   padding: 2px 6px;
-  background: rgba(139, 92, 246, 0.15);
+  background: var(--wm-accent-soft);
   border-radius: 4px;
-  font-weight: 700;
+  font-weight: 600;
   font-size: 11px;
 }
 
 .wm-activity-values > strong {
   font-size: 15px;
-  font-weight: 750;
-  color: #fff;
+  font-weight: 700;
+  color: #ffffff;
   white-space: nowrap;
 }
 
 .wm-activity-average {
   display: flex;
   flex-direction: column;
-  margin-top: 4px;
+  margin-top: 3px;
   font-size: 11.5px;
-  color: #6ee7b7;
+  color: var(--wm-accent);
 }
 
 /* --------------------------------------------------------------------------
-   Collection Page Price Badges on Cards
+   Collection Page Price Badges on Cards (Native Pill Style)
    -------------------------------------------------------------------------- */
 .wm-average-badge {
   position: relative;
@@ -858,30 +881,28 @@ body.wm-dialog-open {
   margin-top: 3px;
   padding: 2px 7px;
   border-radius: 6px;
-  background: rgba(11, 15, 23, 0.9);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  color: #6ee7b7;
-  border: 1px solid rgba(16, 185, 129, 0.35);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  background: rgba(12, 16, 14, 0.94);
+  color: var(--wm-accent);
+  border: 1px solid var(--wm-accent-border);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
   font-size: 9.5px;
   line-height: 1.2;
-  font-weight: 750;
+  font-weight: 700;
   letter-spacing: 0.02em;
   white-space: nowrap;
-  transition: all 0.15s ease;
+  transition: all 0.12s ease;
 }
 
 .wm-average-badge.wm-average-empty {
   color: var(--wm-muted);
-  border-color: rgba(148, 163, 184, 0.22);
-  background: rgba(14, 18, 27, 0.85);
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(19, 22, 21, 0.9);
 }
 
 .wm-average-badge.wm-average-loading {
-  color: #c4b5fd;
-  border-color: rgba(139, 92, 246, 0.3);
-  background: rgba(14, 18, 27, 0.88);
+  color: var(--wm-text);
+  border-color: var(--wm-border);
+  background: rgba(19, 22, 21, 0.9);
 }
 
 .wm-average-spinner {
@@ -902,12 +923,13 @@ body.wm-dialog-open {
    Injected Collection Sort Options in Native Menu
    -------------------------------------------------------------------------- */
 .wm-resale-sort-option {
-  transition: background 0.12s ease;
+  transition: background-color 0.12s ease, color 0.12s ease;
   user-select: none;
 }
 
 .wm-resale-sort-option:hover {
-  background: rgba(139, 92, 246, 0.14) !important;
+  background: var(--wm-surface-light) !important;
+  color: #ffffff !important;
 }
 
 /* --------------------------------------------------------------------------
@@ -923,10 +945,10 @@ body.wm-dialog-open {
   overflow: auto;
   box-sizing: border-box;
   padding: 18px 20px;
-  border: 1px solid rgba(139, 92, 246, 0.4);
+  border: 1px solid var(--wm-border);
   border-radius: var(--wm-radius-lg);
-  background: #0f141f;
-  color: #f1f5f9;
+  background: var(--wm-surface-solid);
+  color: var(--wm-text);
   box-shadow: var(--wm-shadow-lg);
 }
 
@@ -934,7 +956,7 @@ body.wm-dialog-open {
   margin: 0 0 8px;
   font-size: 16px;
   font-weight: 700;
-  color: #fff;
+  color: #ffffff;
 }
 
 .wm-native-verification-active .wm-modal-overlay {
@@ -961,11 +983,11 @@ body.wm-native-verification-active {
 
 .wm-modal *::-webkit-scrollbar-thumb,
 .wm-workspace-toolbar *::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.12);
   border-radius: 999px;
 }
 
 .wm-modal *::-webkit-scrollbar-thumb:hover,
 .wm-workspace-toolbar *::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.22);
 }

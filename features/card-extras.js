@@ -121,7 +121,11 @@
     
           if (
             alt === 'wikimasters' ||
-            /(?:%2f|\/)logo\.png/i.test(src)
+            alt.includes('logo') ||
+            alt === 'placeholder' ||
+            /(?:%2f|\/)logo\.(?:png|webp|svg|jpg)/i.test(src) ||
+            src.includes('/cards/empty') ||
+            src.includes('placeholder')
           ) {
             return img;
           }
@@ -147,6 +151,15 @@
         placeholder.removeAttribute('srcset');
         placeholder.alt = title;
         placeholder.referrerPolicy = 'no-referrer';
+        placeholder.style.objectFit = 'cover';
+        placeholder.style.width = '100%';
+        placeholder.style.height = '100%';
+        placeholder.onerror = () => {
+          placeholder.classList.remove('wm-replaced-missing-image');
+          if (placeholder.dataset.wmOriginalSrc) {
+            placeholder.src = placeholder.dataset.wmOriginalSrc;
+          }
+        };
     
         if (!card.querySelector(':scope > .wm-missing-image-credit')) {
           const credit = document.createElement('a');

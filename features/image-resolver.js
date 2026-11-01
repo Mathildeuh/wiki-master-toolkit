@@ -52,16 +52,71 @@
       }
 
       async function fetchJson(url, source) {
-        const response = await fetch(url, {
-          method: 'GET',
-          credentials: 'omit',
-          referrerPolicy: 'no-referrer',
-          headers: { accept: 'application/json' }
+        try {
+          const response = await fetch(url, {
+            method: 'GET',
+            credentials: 'omit',
+            referrerPolicy: 'no-referrer',
+            headers: { accept: 'application/json' }
+          });
+
+          if (response.status === 404) return null;
+          if (!response.ok) throw new Error(`${source} HTTP ${response.status}`);
+          return await response.json();
+        } catch (error) {
+          console.debug(`[WM Image] ${source} error`, url, error);
+          return null;
+        }
+      }
+
+      async function resolveCommonsUrl(fileName) {
+        if (!fileName) return null;
+        const cleanName = fileName.replace(/^File:/i, '').replace(/^Fichier:/i, '').replace(/ /g, '_');
+        const params = new URLSearchParams({
+          action: 'query',
+          titles: `File:${cleanName}`,
+          prop: 'imageinfo',
+          iiprop: 'url',
+          iiurlwidth: '900',
+          format: 'json',
+          origin: '*'
         });
 
-        if (response.status === 404) return null;
-        if (!response.ok) throw new Error(`${source} HTTP ${response.status}`);
-        return response.json();
+        const json = await fetchJson(
+          `https://commons.wikimedia.org/w/api.php?${params}`,
+          'Wikimedia Commons'
+        );
+
+        const page = Object.values(json?.query?.pages || {})[0] || null;
+        const info = page?.imageinfo?.[0];
+        return info?.thumburl || info?.url || null;
+      }
+
+      async function resolveWikipediaSummary(title) {
+        const titlesToTry = [title];
+        const stripped = title.replace(/\s*\([^)]*\)\s*/g, ' ').trim();
+        if (stripped && stripped !== title) titlesToTry.push(stripped);
+
+        for (const t of titlesToTry) {
+          for (const language of ['fr', 'en']) {
+            const summaryUrl = `https://${language}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(t.replace(/ /g, '_'))}`;
+            const json = await fetchJson(summaryUrl, `Wikipedia-${language}-summary`);
+            const imageUrl = json?.thumbnail?.source || json?.originalimage?.source || null;
+
+            if (imageUrl && !imageUrl.includes('Disambig') && !imageUrl.includes('disambig')) {
+              return {
+                found: true,
+                url: imageUrl,
+                source: 'wikipedia-summary',
+                sourceUrl: json?.content_urls?.desktop?.page || `https://${language}.wikipedia.org/wiki/${encodeURIComponent(t.replace(/ /g, '_'))}`,
+                creditLabel: 'Wikipédia',
+                fileName: json?.thumbnail?.original || null
+              };
+            }
+          }
+        }
+
+        return null;
       }
 
       async function searchWikidata(title) {
@@ -197,7 +252,7 @@
         };
       }
 
-      function resolveWikidataCandidate(candidate) {
+      async function resolveWikidataCandidate(candidate) {
         const entity = candidate?.entity;
         if (!entity) return null;
 
@@ -208,9 +263,12 @@
 
         if (!fileName) return null;
 
+        const directUrl = await resolveCommonsUrl(fileName);
+        if (!directUrl) return null;
+
         return {
           found: true,
-          url: `https://commons.wikimedia.org/wiki/Special:Redirect/file/${encodeURIComponent(fileName)}?width=900`,
+          url: directUrl,
           source: 'wikidata',
           sourceUrl: `https://www.wikidata.org/wiki/${candidate.id}`,
           creditLabel: 'Wikidata',
@@ -240,8 +298,7 @@
           const imageUrl = page?.thumbnail?.source || null;
           const fileName = page?.pageimage || null;
 
-          // On ne garde que les images réutilisables hébergées sur Commons.
-          if (imageUrl && /\/wikipedia\/commons\//i.test(String(imageUrl))) {
+          if (imageUrl) {
             return {
               found: true,
               url: imageUrl,
@@ -259,12 +316,20 @@
       }
 
       async function resolveFresh(title) {
-        let candidates = [];
+        // 1. Wikipedia Summary REST API (fastest, official lead images, redirect support)
+        try {
+          const summary = await resolveWikipediaSummary(title);
+          if (summary) return summary;
+        } catch (error) {
+          console.debug('[WM Image] résumé Wikipédia indisponible', title, error);
+        }
 
+        // 2. Wikidata search & claims
+        let candidates = [];
         try {
           candidates = await searchWikidata(title);
         } catch (error) {
-          console.debug('[WM Average] recherche Wikidata indisponible', title, error);
+          console.debug('[WM Image] recherche Wikidata indisponible', title, error);
         }
 
         const ranked = candidates
@@ -276,29 +341,28 @@
 
         const best = ranked[0]?.candidate || null;
 
-        // Branche Pokémon : uniquement si Wikidata confirme que l'entité est bien
-        // liée à Pokémon, afin d'éviter les faux positifs sur des noms ambigus.
+        // Branche Pokémon
         if (best && looksLikePokemon(best)) {
           try {
             const pokemon = await resolvePokemon(title, best);
             if (pokemon) return pokemon;
           } catch (error) {
-            console.debug('[WM Average] PokéAPI indisponible', title, error);
+            console.debug('[WM Image] PokéAPI indisponible', title, error);
           }
         }
 
-        // Wikidata P18 puis P154 (logo) : excellent fallback généraliste.
+        // Wikidata claims (P18 image, P154 logo)
         for (const { candidate } of ranked) {
-          const entry = resolveWikidataCandidate(candidate);
+          const entry = await resolveWikidataCandidate(candidate);
           if (entry) return entry;
         }
 
-        // Dernier fallback : Wikipedia FR puis EN, Commons uniquement.
+        // 3. Wikipedia Action API
         try {
           const wikipedia = await resolveWikipedia(title);
           if (wikipedia) return wikipedia;
         } catch (error) {
-          console.debug('[WM Average] Wikipedia indisponible', title, error);
+          console.debug('[WM Image] Wikipedia indisponible', title, error);
         }
 
         return { found: false };
