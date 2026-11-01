@@ -11,6 +11,18 @@
       const pendingMarketplaceListings = new Map();
       const pendingBridgeRequests = new Map();
 
+      function rarityMeta(r) {
+        switch ((r || '').toUpperCase()) {
+          case 'L': return { name: 'Légendaire', color: '#ffe144', bg: 'rgba(255, 225, 68, 0.12)', border: 'rgba(255, 225, 68, 0.3)' };
+          case 'UR': return { name: 'Ultra Rare', color: '#fa9931', bg: 'rgba(250, 153, 49, 0.12)', border: 'rgba(250, 153, 49, 0.3)' };
+          case 'SR': return { name: 'Super Rare', color: '#ed6fa3', bg: 'rgba(237, 111, 163, 0.12)', border: 'rgba(237, 111, 163, 0.3)' };
+          case 'R': return { name: 'Rare', color: '#c6a7f2', bg: 'rgba(198, 167, 242, 0.12)', border: 'rgba(198, 167, 242, 0.3)' };
+          case 'PC': return { name: 'Peu commune', color: '#b1cff2', bg: 'rgba(177, 207, 242, 0.12)', border: 'rgba(177, 207, 242, 0.3)' };
+          case 'C': return { name: 'Commune', color: '#b8f2d5', bg: 'rgba(184, 242, 213, 0.12)', border: 'rgba(184, 242, 213, 0.3)' };
+          default: return { name: r || '—', color: '#9ca3af', bg: 'rgba(255, 255, 255, 0.05)', border: 'rgba(255, 255, 255, 0.1)' };
+        }
+      }
+
       // Requête au bridge résolue par l'événement de réponse portant le même requestId.
       function requestBridge(eventName, detail = {}, timeoutMs = 12000) {
         return new Promise((resolve) => {
@@ -80,8 +92,6 @@
         }));
       }
 
-      // Les cartes vues pendant la session ne décrivent parfois qu'un seul exemplaire d'un doublon :
-      // elles ne doivent pas faire perdre ce que le chargement complet connaît des autres copies.
       function mergeKnownCard(stored, seen) {
         const merged = { ...stored, ...seen };
         const storedCopies = Array.isArray(stored.ownedCardIds) ? stored.ownedCardIds : [];
@@ -103,8 +113,6 @@
         const collectionEntry = storedCollection[ALL_COLLECTION_KEY];
         const storedCards = Array.isArray(collectionEntry?.cards) ? collectionEntry.cards : [];
 
-        // Merge persisted metadata with cards already discovered during this page session.
-        // This lets the ranking work even before a full bulk collection load.
         const knownCards = new Map();
 
         for (const card of storedCards) {
@@ -113,7 +121,6 @@
 
         for (const card of cardMetaById.values()) {
           if (!card?.id || !card?.title) continue;
-          // Market/trade catalogue metadata does not establish collection ownership.
           if (!knownCards.has(card.id) && !card.ownedCardId && !card.ownedCardIds?.length) continue;
           const previous = knownCards.get(card.id);
           knownCards.set(card.id, previous ? mergeKnownCard(previous, card) : { ...card });
@@ -124,7 +131,7 @@
         if (!candidates.length) {
           runtime.modalUi.showInfoModal(
             'Aucun prix chargé',
-            'Aucune carte avec métadonnées n’est encore disponible. Parcourez votre collection ou utilisez « Charger les prix », puis réessayez.'
+            'Aucune carte avec métadonnées n’est encore disponible. Parcourez votre collection ou utilisez « Actualiser les prix », puis réessayez.'
           );
           return;
         }
@@ -135,8 +142,6 @@
         const rows = candidates
           .map((card) => {
             const entry = prices[cacheKey(card.id)];
-
-            // Errors are not useful in a "most expensive" ranking.
             if (!entry || entry.ok === false) return null;
 
             const average = chooseAverage(entry, null, card.rarity || null);
@@ -158,13 +163,11 @@
         if (!rows.length) {
           runtime.modalUi.showInfoModal(
             'Aucun prix chargé',
-            'Aucun prix n’est encore présent dans le cache. Parcourez votre collection ou utilisez « Charger les prix », puis réessayez.'
+            'Aucun prix n’est encore présent dans le cache. Parcourez votre collection ou utilisez « Actualiser les prix », puis réessayez.'
           );
           return;
         }
 
-        // Cartes connues sans prix en cache : hors classement, mais utiles aux filtres
-        // favoris / étiquettes pour ne pas donner un résultat incomplet.
         const rankedIds = new Set(rows.map((row) => row.id));
         const unpricedRows = candidates
           .filter((card) => (
@@ -198,18 +201,39 @@
         const modal = document.createElement('div');
         modal.className = `wm-modal wm-ranking-modal ${salesEnabled ? 'wm-ranking-sales-enabled' : 'wm-ranking-sales-disabled'}`;
 
+        // 1. Calcul des statistiques globales
+        const pricedCount = rows.filter((row) => Number.isFinite(row.average) && row.average > 0).length;
+        const totalEstimatedValue = rows.reduce((sum, row) => {
+          return sum + (Number.isFinite(row.average) && row.average > 0 ? row.average * (row.count || 1) : 0);
+        }, 0);
+
+        // 2. En-tête raffiné
         const header = document.createElement('div');
         header.className = 'wm-ranking-header';
 
         const headingWrap = document.createElement('div');
+        headingWrap.className = 'wm-ranking-heading-wrap';
+
         const title = document.createElement('h2');
         title.textContent = 'Classement par valeur';
 
-        const subtitle = document.createElement('p');
-        const pricedCount = rows.filter((row) => Number.isFinite(row.average)).length;
-        subtitle.textContent = `${rows.length} cartes analysées • ${pricedCount} avec un prix moyen estimé${collectionFetchedAt ? ` • Mis à jour (${humanElapsed(collectionFetchedAt)})` : ''}`;
+        const statsRow = document.createElement('div');
+        statsRow.className = 'wm-ranking-header-stats';
 
-        headingWrap.append(title, subtitle);
+        const statTotal = document.createElement('div');
+        statTotal.className = 'wm-stat-pill wm-stat-highlight';
+        statTotal.innerHTML = `<span class="wm-stat-label">Valeur totale estimée</span> <span class="wm-stat-val">${formatAverage(Math.round(totalEstimatedValue))} W</span>`;
+
+        const statCount = document.createElement('div');
+        statCount.className = 'wm-stat-pill';
+        statCount.innerHTML = `<span class="wm-stat-label">Cartes</span> <span class="wm-stat-val">${rows.length}</span>`;
+
+        const statPriced = document.createElement('div');
+        statPriced.className = 'wm-stat-pill';
+        statPriced.innerHTML = `<span class="wm-stat-label">Cotées</span> <span class="wm-stat-val">${pricedCount}</span>`;
+
+        statsRow.append(statTotal, statCount, statPriced);
+        headingWrap.append(title, statsRow);
 
         const closeButton = document.createElement('button');
         closeButton.type = 'button';
@@ -219,55 +243,75 @@
 
         header.append(headingWrap, closeButton);
 
+        // 3. Bannière d'information sobre si cache partiel
         let cacheNotice = null;
         if (status.incomplete) {
           cacheNotice = document.createElement('div');
           cacheNotice.className = 'wm-ranking-cache-notice';
-
-          const noticeTitle = document.createElement('strong');
-          noticeTitle.textContent = 'Classement partiel';
-
-          const noticeText = document.createElement('span');
-          noticeText.textContent =
-            'Vous n’avez pas chargé tous les prix : seules les cartes actuellement disponibles dans votre cache sont affichées ici.';
-
-          cacheNotice.append(noticeTitle, noticeText);
+          cacheNotice.innerHTML = '<span class="wm-notice-icon">ℹ️</span> <span>Seules les cartes ayant un prix enregistré en cache sont affichées dans ce classement.</span>';
         }
 
+        // 4. Panneau de vente rapide intelligent
+        let saleMode = 'average'; // 'average' | 'fixed'
         const saleControls = document.createElement('div');
         saleControls.className = 'wm-ranking-sale-controls';
 
-        const priceField = document.createElement('label');
-        priceField.className = 'wm-ranking-sale-field';
+        const saleHeader = document.createElement('div');
+        saleHeader.className = 'wm-sale-panel-title';
+        saleHeader.innerHTML = '<span class="wm-sale-icon">⚡</span> <span>Vente rapide aux enchères</span>';
 
-        const priceLabel = document.createElement('span');
-        priceLabel.textContent = 'Mise de départ (W) :';
+        const saleOptionsWrap = document.createElement('div');
+        saleOptionsWrap.className = 'wm-sale-panel-options';
+
+        // Choix du mode de prix
+        const modeGroup = document.createElement('div');
+        modeGroup.className = 'wm-sale-mode-group';
+
+        const modeAvgLabel = document.createElement('label');
+        modeAvgLabel.className = 'wm-sale-mode-choice is-active';
+        const modeAvgRadio = document.createElement('input');
+        modeAvgRadio.type = 'radio';
+        modeAvgRadio.name = 'wm_sale_mode';
+        modeAvgRadio.value = 'average';
+        modeAvgRadio.checked = true;
+        modeAvgLabel.append(modeAvgRadio, document.createTextNode(' Au prix moyen estimé'));
+
+        const modeFixedLabel = document.createElement('label');
+        modeFixedLabel.className = 'wm-sale-mode-choice';
+        const modeFixedRadio = document.createElement('input');
+        modeFixedRadio.type = 'radio';
+        modeFixedRadio.name = 'wm_sale_mode';
+        modeFixedRadio.value = 'fixed';
 
         const priceInput = document.createElement('input');
         priceInput.type = 'number';
         priceInput.min = '1';
         priceInput.step = '1';
         priceInput.value = '10';
-        priceInput.inputMode = 'decimal';
+        priceInput.className = 'wm-sale-fixed-input';
+        priceInput.setAttribute('aria-label', 'Mise fixe');
 
-        priceField.append(priceLabel, priceInput);
+        modeFixedLabel.append(modeFixedRadio, document.createTextNode(' Prix fixe : '), priceInput, document.createTextNode(' W'));
+        modeGroup.append(modeAvgLabel, modeFixedLabel);
 
-        const durationField = document.createElement('label');
-        durationField.className = 'wm-ranking-sale-field';
+        // Durée de l'enchère
+        const durationField = document.createElement('div');
+        durationField.className = 'wm-sale-duration-wrap';
 
         const durationLabel = document.createElement('span');
-        durationLabel.textContent = 'Durée de vente :';
+        durationLabel.textContent = 'Durée : ';
 
         const durationInput = document.createElement('select');
+        durationInput.className = 'wm-sale-duration-select';
 
         const durationOptions = [
           [10, '10 min'],
           [30, '30 min'],
-          [60, '1 h'],
-          [180, '3 h'],
-          [360, '6 h'],
-          [720, '12 h'],
-          [1440, '24 h']
+          [60, '1 heure'],
+          [180, '3 heures'],
+          [360, '6 heures'],
+          [720, '12 heures'],
+          [1440, '24 heures (conseillé)']
         ];
 
         for (const [value, label] of durationOptions) {
@@ -276,28 +320,27 @@
           option.textContent = label;
           durationInput.append(option);
         }
-
-        durationInput.value = '10';
+        durationInput.value = '1440'; // 24h par défaut
 
         durationField.append(durationLabel, durationInput);
+        saleOptionsWrap.append(modeGroup, durationField);
 
         const hint = document.createElement('div');
         hint.className = 'wm-ranking-sale-hint';
-        hint.textContent = 'Chaque bouton utilise ces deux valeurs.';
+        hint.textContent = 'Chaque bouton ci-dessous appliquera directement le montant indiqué.';
 
         const saleBanner = document.createElement('div');
         saleBanner.className = 'wm-ranking-sale-banner';
         saleBanner.hidden = true;
 
-        saleControls.append(priceField, durationField, hint, saleBanner);
+        saleControls.append(saleHeader, saleOptionsWrap, hint, saleBanner);
 
+        // 5. Barre de filtres épurée
         const tagKey = (tag) => tag.id || tag.name;
         const rowTags = (row) => mergeTags(row.tags);
 
-        // Le rang affiché reste celui du classement complet, même une fois filtré.
         const rankedRows = rows.map((row, index) => ({ row, index }));
         const rankedById = new Map(rankedRows.map((entry) => [entry.row.id, entry]));
-        // Sans prix chargé : pas de rang, affichées seulement quand un filtre est actif.
         const unrankedRows = (Array.isArray(status.unpricedRows) ? status.unpricedRows : [])
           .map((row) => ({ row, index: null }));
         const filterableRows = [...rankedRows, ...unrankedRows];
@@ -307,7 +350,6 @@
         const knownTags = new Map();
         const addKnownTags = (tags) => {
           for (const tag of mergeTags(tags)) {
-            // Une même étiquette ne doit apparaître qu'une fois, qu'on connaisse son id ou non.
             const sameName = [...knownTags.values()].find((known) => known.name === tag.name);
             if (sameName && sameName.id && !tag.id) continue;
             if (sameName) knownTags.delete(tagKey(sameName));
@@ -319,23 +361,49 @@
         };
         filterableRows.forEach(({ row }) => addKnownTags(row.tags));
 
-        // Cartes d'un filtre telles que renvoyées par le site : clé -> { state, rows }.
         const fetchedResults = new Map();
         const STARRED_KEY = '__starred__';
 
         const filters = document.createElement('div');
         filters.className = 'wm-ranking-filters';
 
-        const starredFilter = document.createElement('label');
-        starredFilter.className = 'wm-ranking-filter-starred';
+        const searchInput = document.createElement('input');
+        searchInput.type = 'search';
+        searchInput.className = 'wm-ranking-search-input';
+        searchInput.placeholder = 'Rechercher par titre…';
+        searchInput.setAttribute('aria-label', 'Rechercher par titre');
 
-        const starredInput = document.createElement('input');
-        starredInput.type = 'checkbox';
+        const raritySelect = document.createElement('select');
+        raritySelect.className = 'wm-ranking-filter-rarity';
+        raritySelect.setAttribute('aria-label', 'Filtrer par rareté');
+        const rarities = [
+          ['', 'Toutes les raretés'],
+          ['L', 'Légendaires (L)'],
+          ['UR', 'Ultra Rares (UR)'],
+          ['SR', 'Super Rares (SR)'],
+          ['R', 'Rares (R)'],
+          ['PC', 'Peu Communes (PC)'],
+          ['C', 'Communes (C)']
+        ];
+        for (const [rVal, rLabel] of rarities) {
+          const opt = document.createElement('option');
+          opt.value = rVal;
+          opt.textContent = rLabel;
+          raritySelect.append(opt);
+        }
 
-        const starredText = document.createElement('span');
-        starredText.textContent = '★ Favoris uniquement';
+        let starredActive = false;
+        const starredBtn = document.createElement('button');
+        starredBtn.type = 'button';
+        starredBtn.className = 'wm-filter-pill-btn';
+        starredBtn.innerHTML = '<span style="color:#facc15;">★</span> <span>Favoris</span>';
+        starredBtn.title = 'Afficher uniquement les cartes favorites';
 
-        starredFilter.append(starredInput, starredText);
+        starredBtn.addEventListener('click', () => {
+          starredActive = !starredActive;
+          starredBtn.classList.toggle('is-active', starredActive);
+          applyFilters();
+        });
 
         const tagSelect = document.createElement('select');
         tagSelect.className = 'wm-ranking-filter-tag';
@@ -365,35 +433,10 @@
 
         fillTagOptions();
 
-        const searchInput = document.createElement('input');
-        searchInput.type = 'search';
-        searchInput.className = 'wm-ranking-search-input';
-        searchInput.placeholder = '🔍 Rechercher une carte…';
-        searchInput.setAttribute('aria-label', 'Rechercher une carte');
-
-        const raritySelect = document.createElement('select');
-        raritySelect.className = 'wm-ranking-filter-rarity';
-        raritySelect.setAttribute('aria-label', 'Filtrer par rareté');
-        const rarities = [
-          ['', 'Toutes les raretés'],
-          ['L', 'Légendaires (L)'],
-          ['UR', 'Ultra Rares (UR)'],
-          ['SR', 'Super Rares (SR)'],
-          ['R', 'Rares (R)'],
-          ['PC', 'Peu Communes (PC)'],
-          ['C', 'Communes (C)']
-        ];
-        for (const [rVal, rLabel] of rarities) {
-          const opt = document.createElement('option');
-          opt.value = rVal;
-          opt.textContent = rLabel;
-          raritySelect.append(opt);
-        }
-
         const filterCount = document.createElement('span');
         filterCount.className = 'wm-ranking-filter-count';
 
-        filters.append(searchInput, raritySelect, starredFilter, tagSelect, filterCount);
+        filters.append(searchInput, raritySelect, starredBtn, tagSelect, filterCount);
 
         const list = document.createElement('div');
         list.className = 'wm-ranking-list';
@@ -401,40 +444,117 @@
         const PAGE_SIZE = 50;
         let renderedCount = 0;
 
+        function getTargetAmount(row) {
+          if (saleMode === 'average' && Number.isFinite(row.average) && row.average > 0) {
+            return Math.max(1, Math.round(row.average));
+          }
+          return Math.max(1, Number(priceInput.value) || 10);
+        }
+
         const saleInputsAreValid = () => {
-          const amount = Number(priceInput.value);
           const duration = Number(durationInput.value);
-          return Number.isFinite(amount) && amount > 0 && Number.isFinite(duration) && duration > 0;
+          if (!Number.isFinite(duration) || duration <= 0) return false;
+          if (saleMode === 'fixed') {
+            const amount = Number(priceInput.value);
+            return Number.isFinite(amount) && amount > 0;
+          }
+          return true;
         };
 
         const refreshSaleButtons = () => {
           const valid = saleInputsAreValid();
 
-          for (const button of list.querySelectorAll('.wm-ranking-sell-button')) {
-            if (button.dataset.state === 'pending' || button.dataset.state === 'success') continue;
+          for (const item of list.querySelectorAll('.wm-ranking-row')) {
+            const button = item.querySelector('.wm-ranking-sell-button');
+            if (!button || button.dataset.state === 'pending' || button.dataset.state === 'success') continue;
+
+            const cardId = button.dataset.cardId;
+            const targetRow = visibleRows.find((r) => r.row.id === cardId)?.row;
+            if (!targetRow) continue;
+
             button.disabled = !valid;
+            const targetAmount = getTargetAmount(targetRow);
+            button.textContent = `Vendre à ${formatAverage(targetAmount)} W`;
           }
         };
+
+        modeAvgRadio.addEventListener('change', () => {
+          saleMode = 'average';
+          modeAvgLabel.classList.add('is-active');
+          modeFixedLabel.classList.remove('is-active');
+          refreshSaleButtons();
+        });
+
+        modeFixedRadio.addEventListener('change', () => {
+          saleMode = 'fixed';
+          modeFixedLabel.classList.add('is-active');
+          modeAvgLabel.classList.remove('is-active');
+          refreshSaleButtons();
+        });
+
+        priceInput.addEventListener('input', () => {
+          if (saleMode === 'fixed') refreshSaleButtons();
+        });
+
+        durationInput.addEventListener('change', refreshSaleButtons);
 
         const createRankingRow = (row, index) => {
           const item = document.createElement('div');
           item.className = 'wm-ranking-row';
 
+          // 1. Badge de Rang (podium or classique)
           const rank = document.createElement('div');
           rank.className = 'wm-ranking-rank';
-          rank.textContent = index == null ? '—' : String(index + 1);
-          if (index == null) rank.title = 'Carte absente du classement en cache';
+          if (index === 0) {
+            rank.className += ' wm-rank-1';
+            rank.textContent = '#1';
+          } else if (index === 1) {
+            rank.className += ' wm-rank-2';
+            rank.textContent = '#2';
+          } else if (index === 2) {
+            rank.className += ' wm-rank-3';
+            rank.textContent = '#3';
+          } else {
+            rank.textContent = index == null ? '—' : `#${index + 1}`;
+          }
 
+          // 2. Miniature avec gestion propre des images manquantes
           const thumb = document.createElement('div');
           thumb.className = 'wm-ranking-thumb';
+          const rMeta = rarityMeta(row.rarity);
+
           if (row.imageUrl) {
             const img = document.createElement('img');
             img.src = row.imageUrl;
-            img.alt = '';
+            img.alt = row.title || '';
             img.loading = 'lazy';
+            img.decoding = 'async';
             thumb.append(img);
+          } else {
+            const fallback = document.createElement('div');
+            fallback.className = 'wm-ranking-thumb-fallback';
+            fallback.style.background = `linear-gradient(180deg, ${rMeta.bg} 0%, rgba(12, 16, 14, 0.95) 100%)`;
+            fallback.style.color = rMeta.color;
+            fallback.textContent = (row.rarity || 'W').toUpperCase();
+            thumb.append(fallback);
+
+            if (runtime.imageResolver?.resolveMissingImage) {
+              runtime.imageResolver.resolveMissingImage(row.title).then((entry) => {
+                if (entry?.found && entry.url && thumb.isConnected) {
+                  const resolvedImg = document.createElement('img');
+                  resolvedImg.src = entry.url;
+                  resolvedImg.alt = row.title || '';
+                  resolvedImg.loading = 'lazy';
+                  resolvedImg.onload = () => {
+                    fallback.remove();
+                    thumb.append(resolvedImg);
+                  };
+                }
+              }).catch(() => {});
+            }
           }
 
+          // 3. Titre et badges (Rareté, Exemplaires, Favori)
           const info = document.createElement('div');
           info.className = 'wm-ranking-info';
 
@@ -442,17 +562,16 @@
           name.className = 'wm-ranking-title';
           name.textContent = row.title;
 
-          if (row.starred) {
-            const star = document.createElement('span');
-            star.className = 'wm-ranking-star';
-            star.textContent = '★';
-            star.title = 'Carte en favori';
-            name.prepend(star);
-          }
-
           const meta = document.createElement('div');
           meta.className = 'wm-ranking-meta';
-          meta.textContent = row.rarity || '—';
+
+          const rarityPill = document.createElement('span');
+          rarityPill.className = 'wm-ranking-rarity-pill';
+          rarityPill.style.color = rMeta.color;
+          rarityPill.style.backgroundColor = rMeta.bg;
+          rarityPill.style.borderColor = rMeta.border;
+          rarityPill.textContent = rMeta.name;
+          meta.append(rarityPill);
 
           if (row.count > 1) {
             const count = document.createElement('span');
@@ -462,44 +581,64 @@
             meta.append(count);
           }
 
+          if (row.starred) {
+            const star = document.createElement('span');
+            star.className = 'wm-ranking-star-badge';
+            star.textContent = '★ Favori';
+            meta.append(star);
+          }
+
           for (const tag of rowTags(row)) {
             const chip = document.createElement('span');
             chip.className = 'wm-ranking-tag';
-
             if (/^#[0-9a-f]{3,8}$/i.test(tag.color || '')) {
               const dot = document.createElement('span');
               dot.className = 'wm-ranking-tag-dot';
               dot.style.background = tag.color;
               chip.append(dot);
             }
-
             chip.append(document.createTextNode(tag.name));
             meta.append(chip);
           }
 
           info.append(name, meta);
 
-          const price = document.createElement('div');
-          price.className = 'wm-ranking-price';
-          if (Number.isFinite(row.average)) {
-            price.textContent = `${formatAverage(row.average)} W`;
+          // 4. Prix moyen lisible
+          const priceWrap = document.createElement('div');
+          priceWrap.className = 'wm-ranking-price-wrap';
+
+          const priceVal = document.createElement('div');
+          priceVal.className = 'wm-ranking-price';
+
+          const priceCaption = document.createElement('div');
+          priceCaption.className = 'wm-ranking-price-caption';
+
+          if (Number.isFinite(row.average) && row.average > 0) {
+            priceVal.textContent = `${formatAverage(row.average)} W`;
+            priceCaption.textContent = 'Moyenne marché';
           } else {
-            price.textContent = '—';
-            price.classList.add('wm-ranking-price-empty');
+            priceVal.textContent = '—';
+            priceVal.classList.add('wm-ranking-price-empty');
+            priceCaption.textContent = 'Pas de cote';
           }
 
+          priceWrap.append(priceVal, priceCaption);
+
+          // 5. Bouton de mise en vente explicite
           const sellButton = document.createElement('button');
           sellButton.type = 'button';
           sellButton.className = 'wm-tool-button wm-ranking-sell-button';
-          sellButton.textContent = 'Mettre en vente';
           sellButton.dataset.cardId = row.id;
+
+          const targetAmount = getTargetAmount(row);
+          sellButton.textContent = `Vendre à ${formatAverage(targetAmount)} W`;
           sellButton.disabled = !saleInputsAreValid();
 
           sellButton.addEventListener('click', () => {
-            const amount = Number(priceInput.value);
+            const finalAmount = getTargetAmount(row);
             const duration = Number(durationInput.value);
 
-            if (!Number.isFinite(amount) || amount <= 0) {
+            if (!Number.isFinite(finalAmount) || finalAmount <= 0) {
               priceInput.focus();
               return;
             }
@@ -509,16 +648,14 @@
               return;
             }
 
-            // Le favori est connu par carte, pas par exemplaire : pour une carte en favori,
-            // on laisse le bridge choisir un exemplaire non favori s'il en existe un.
             const ownedCardId = row.starred
               ? null
               : (row.ownedCardId || row.ownedCardIds?.[0] || null);
 
-            requestListing({ button: sellButton, row, amount, duration, ownedCardId });
+            requestListing({ button: sellButton, row, amount: finalAmount, duration, ownedCardId });
           });
 
-          item.append(rank, thumb, info, price);
+          item.append(rank, thumb, info, priceWrap);
           if (salesEnabled) item.append(sellButton);
           return item;
         };
@@ -558,9 +695,6 @@
           return a.row.title.localeCompare(b.row.title, 'fr');
         };
 
-        // Le site renvoie toutes les cartes du filtre, y compris celles absentes du classement.
-        // Il ne renvoie que les exemplaires concernés : on complète ce qu'on sait déjà de la carte
-        // sans réduire son nombre d'exemplaires.
         const buildFetchedRows = (cards) => {
           const outside = cards.filter((card) => !rankedById.has(card.id));
           const prices = storageGet(outside.map((card) => cacheKey(card.id)));
@@ -607,14 +741,13 @@
                 }
               : { state: 'error' });
 
-            // Ne redessine que si ce filtre est toujours celui affiché.
-            const currentKey = tagSelect.value || (starredInput.checked ? STARRED_KEY : '');
+            const currentKey = tagSelect.value || (starredActive ? STARRED_KEY : '');
             if (currentKey === key) applyFilters();
           });
         };
 
         const applyFilters = () => {
-          const starredOnly = starredInput.checked;
+          const starredOnly = starredActive;
           const key = tagSelect.value;
           const tag = key ? knownTags.get(key) : null;
           const filterActive = starredOnly || Boolean(tag);
@@ -626,7 +759,6 @@
             if (tag.id) loadFetchedRows(key, 'wm-average-load-tag-cards', { tagId: tag.id });
             result = fetchedResults.get(key) || null;
 
-            // En attendant (ou en cas d'échec) : les cartes déjà connues de l'extension.
             pool = result?.state === 'ready'
               ? result.rows
               : filterableRows.filter(({ row }) => (
@@ -661,17 +793,17 @@
           });
 
           const unpricedCount = visibleRows
-            .filter(({ row }) => !Number.isFinite(row.average)).length;
+            .filter(({ row }) => !Number.isFinite(row.average) || row.average <= 0).length;
           const plural = visibleRows.length > 1 ? 's' : '';
 
           const totalPricedSum = visibleRows.reduce((sum, { row }) => {
-            return sum + (Number.isFinite(row.average) ? row.average * (row.count || 1) : 0);
+            return sum + (Number.isFinite(row.average) && row.average > 0 ? row.average * (row.count || 1) : 0);
           }, 0);
-          const totalText = totalPricedSum > 0 ? ` • Total estimé : ${formatAverage(totalPricedSum)} W` : '';
+          const totalText = totalPricedSum > 0 ? ` • ${formatAverage(Math.round(totalPricedSum))} W` : '';
 
           filterCount.textContent = isFiltering
-            ? `${visibleRows.length} carte${plural}${unpricedCount ? ` • ${unpricedCount} sans prix` : ''}${totalText}${note}`
-            : (totalPricedSum > 0 ? `Total collection : ${formatAverage(totalPricedSum)} W` : '');
+            ? `${visibleRows.length} résultat${plural}${totalText}${note}`
+            : `${visibleRows.length} cartes`;
 
           renderedCount = 0;
           list.replaceChildren();
@@ -690,7 +822,6 @@
           renderNextChunk();
         };
 
-        starredInput.addEventListener('change', applyFilters);
         tagSelect.addEventListener('change', applyFilters);
         searchInput.addEventListener('input', applyFilters);
         raritySelect.addEventListener('change', applyFilters);
@@ -704,9 +835,6 @@
           rootMargin: '250px 0px',
           threshold: 0
         });
-
-        priceInput.addEventListener('input', refreshSaleButtons);
-        durationInput.addEventListener('change', refreshSaleButtons);
 
         renderNextChunk();
         observer.observe(sentinel);
@@ -728,25 +856,18 @@
         modal.append(filters, list);
         overlay.append(modal);
         document.body.append(overlay);
-
-        // Le menu propose toutes les étiquettes du joueur, pas seulement celles des cartes en cache.
-        requestBridge('wm-average-load-tag-options').then((detail) => {
-          if (closed || !detail.ok) return;
-          addKnownTags(detail.tags);
-          fillTagOptions();
-        });
+        searchInput.focus();
       }
 
-
-      window.addEventListener('wm-average-create-listing-progress', (event) => {
+      window.addEventListener('wm-average-marketplace-slot-count', (event) => {
         const detail = event.detail || {};
-        const pending = pendingMarketplaceListings.get(detail.requestId);
-        if (!pending?.button?.isConnected) return;
-
-        if (detail.state === 'refreshing-id') {
-          pending.button.textContent = 'ID expiré • recherche…';
-        } else if (detail.state === 'resolving-id') {
-          pending.button.textContent = 'Recherche ID…';
+        if (typeof detail.count === 'number') {
+          const banner = document.querySelector('.wm-ranking-sale-banner');
+          if (banner && detail.max && detail.count >= detail.max) {
+            banner.hidden = false;
+            banner.className = 'wm-ranking-sale-banner is-error';
+            banner.textContent = `⚠️ Limite atteinte : ${detail.count}/${detail.max} ventes en cours. Attendez la fin d'une enchère pour en relancer une.`;
+          }
         }
       });
 
@@ -773,7 +894,7 @@
             if (!confirmed) {
               delete button.dataset.state;
               button.disabled = false;
-              button.textContent = 'Mettre en vente';
+              button.textContent = `Vendre à ${formatAverage(amount)} W`;
               return;
             }
 
@@ -923,7 +1044,6 @@
           banner.textContent = `⚠️ Impossible de mettre en vente « ${row.title} » : ${clearReason}`;
         }
       });
-
 
       return { openRankingModal };
     }
