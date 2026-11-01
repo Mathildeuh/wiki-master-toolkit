@@ -234,6 +234,163 @@
         }
       }
 
+      let activeCollectionResaleSort = null;
+      let isCollectionSortingActive = false;
+
+      function getCardResalePrice(cardEl) {
+        if (!cardEl) return -1;
+        const id = cardEl.dataset.wmCardId || idByTitle.get(normalizeTitle(cardEl.querySelector('h3')?.textContent || ''));
+        if (id && cacheMemory.has(id)) {
+          const entry = cacheMemory.get(id);
+          if (entry && entry.ok !== false) {
+            const avg = chooseAverage(entry, cardEl, getRarityFromCard(cardEl) || cardMetaById.get(id)?.rarity || null);
+            if (Number.isFinite(avg)) return avg;
+          }
+        }
+        const badge = cardEl.querySelector('.wm-average-badge');
+        if (badge) {
+          const m = (badge.textContent || '').match(/([\d\s,]+)\s*W/);
+          if (m) {
+            const val = parseFloat(m[1].replace(/\s/g, '').replace(',', '.'));
+            if (Number.isFinite(val)) return val;
+          }
+        }
+        return -1;
+      }
+
+      function sortCollectionGridByPrice(direction = 'desc') {
+        if (!isCollectionPage()) return;
+        const cards = [...document.querySelectorAll('div[class*="rounded-2xl"][class*="overflow-hidden"][class*="cursor-pointer"]')];
+        if (!cards.length) return;
+
+        const parent = cards[0].parentElement;
+        if (!parent) return;
+
+        const items = cards.map((card) => ({
+          card,
+          price: getCardResalePrice(card),
+          title: (card.querySelector('h3')?.textContent || '').trim()
+        }));
+
+        items.sort((a, b) => {
+          if (direction === 'desc') {
+            if (b.price !== a.price) return b.price - a.price;
+            return a.title.localeCompare(b.title, 'fr');
+          } else {
+            if (a.price === -1 && b.price !== -1) return 1;
+            if (b.price === -1 && a.price !== -1) return -1;
+            if (a.price !== b.price) return a.price - b.price;
+            return a.title.localeCompare(b.title, 'fr');
+          }
+        });
+
+        items.forEach((item, idx) => {
+          item.card.style.order = String(idx);
+          parent.appendChild(item.card);
+        });
+      }
+
+      function resetCollectionGridSort() {
+        const cards = document.querySelectorAll('div[class*="rounded-2xl"][class*="overflow-hidden"][class*="cursor-pointer"]');
+        cards.forEach((card) => {
+          card.style.order = '';
+        });
+      }
+
+      function findCollectionSortButton() {
+        return (
+          document.querySelector('button[aria-label="Trier la collection"]') ||
+          document.getElementById('_r_3_') ||
+          [...document.querySelectorAll('button[aria-haspopup="listbox"]')].find((btn) => {
+            const txt = (btn.textContent || '').toLowerCase();
+            return txt.includes('rareté') || txt.includes('nom') || txt.includes('favoris') || txt.includes('date');
+          })
+        );
+      }
+
+      function injectCollectionResaleSortOptions(listbox) {
+        if (!listbox || listbox.dataset.wmSortInjected) return;
+
+        const sample = listbox.querySelector('[role="option"]') || listbox.firstElementChild;
+        const baseClass = sample ? sample.className : 'flex items-center justify-between gap-2 rounded-md px-3 py-2 text-sm cursor-pointer';
+
+        listbox.dataset.wmSortInjected = '1';
+
+        const optDesc = document.createElement('div');
+        optDesc.role = 'option';
+        optDesc.className = baseClass + ' wm-resale-sort-option';
+        optDesc.setAttribute('data-wm-sort', 'price-desc');
+        optDesc.setAttribute('tabindex', '0');
+        optDesc.innerHTML = '<span class="flex items-center gap-1.5 font-medium"><span style="color:#a78bfa;font-weight:700;">✦</span> <span>Prix de revente ↓</span></span><span class="text-xs text-[var(--color-foreground)]/50">Moy. max</span>';
+
+        const optAsc = document.createElement('div');
+        optAsc.role = 'option';
+        optAsc.className = baseClass + ' wm-resale-sort-option';
+        optAsc.setAttribute('data-wm-sort', 'price-asc');
+        optAsc.setAttribute('tabindex', '0');
+        optAsc.innerHTML = '<span class="flex items-center gap-1.5 font-medium"><span style="color:#a78bfa;font-weight:700;">✦</span> <span>Prix de revente ↑</span></span><span class="text-xs text-[var(--color-foreground)]/50">Moy. min</span>';
+
+        function applyResaleSort(dir) {
+          activeCollectionResaleSort = dir;
+          isCollectionSortingActive = true;
+
+          const sortBtn = findCollectionSortButton();
+          if (sortBtn) {
+            const labelEl = sortBtn.querySelector('span span') || sortBtn.querySelector('span');
+            if (labelEl) {
+              labelEl.textContent = dir === 'desc' ? 'Prix de revente ↓' : 'Prix de revente ↑';
+            }
+            sortBtn.click();
+          }
+
+          sortCollectionGridByPrice(dir);
+        }
+
+        optDesc.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          applyResaleSort('desc');
+        });
+
+        optAsc.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          applyResaleSort('asc');
+        });
+
+        listbox.append(optDesc, optAsc);
+      }
+
+      function ensureCollectionSortInjector() {
+        if (!isCollectionPage()) return;
+
+        const sortBtn = findCollectionSortButton();
+        if (sortBtn) {
+          const controlsId = sortBtn.getAttribute('aria-controls');
+          if (controlsId) {
+            const listbox = document.getElementById(controlsId);
+            if (listbox) injectCollectionResaleSortOptions(listbox);
+          }
+        }
+
+        const anyListbox = document.querySelector('[role="listbox"]:not([data-wm-sort-injected])');
+        if (anyListbox) {
+          const txt = (anyListbox.textContent || '').toLowerCase();
+          if (txt.includes('rareté') || txt.includes('nom') || txt.includes('favoris') || txt.includes('date')) {
+            injectCollectionResaleSortOptions(anyListbox);
+          }
+        }
+
+        if (sortBtn && isCollectionSortingActive) {
+          const txt = (sortBtn.textContent || '').trim();
+          if (!txt.includes('Prix de revente')) {
+            isCollectionSortingActive = false;
+            activeCollectionResaleSort = null;
+            resetCollectionGridSort();
+          }
+        }
+      }
+
       function renderVisibleCollectionCards() {
         if (!runtime.settings.isEnabled('collectionPrices')) {
           document.querySelectorAll('.wm-average-badge').forEach((badge) => badge.remove());
@@ -261,6 +418,12 @@
 
           const card = h3.closest('div[class*="rounded-2xl"][class*="overflow-hidden"][class*="cursor-pointer"]');
           if (card) bindCollectionCardElement(id, h3, card);
+        }
+
+        ensureCollectionSortInjector();
+
+        if (isCollectionSortingActive && activeCollectionResaleSort) {
+          sortCollectionGridByPrice(activeCollectionResaleSort);
         }
       }
 
@@ -523,7 +686,7 @@
         getRarityFromCard, formatAverage, chooseAverage, renderCollectionCard,
         hydrateCacheForCards, renderVisibleCollectionCards, renderMarketplaceAverage,
         renderMarketplaceCurrent, renderKnownCard, renderGlobalCollectionInspectedCard,
-        ensureGlobalCollectionInspectedCard
+        ensureGlobalCollectionInspectedCard, sortCollectionGridByPrice, ensureCollectionSortInjector
       };
     }
   };

@@ -47,9 +47,15 @@
         bar.classList.add('wm-workspace-toolbar');
         if (!bar.dataset.wmOrganized) {
           bar.dataset.wmOrganized = '1';
-          let version = bar.querySelector(':scope > small');
-          if (!version) { version = document.createElement('small'); version.textContent = `WM Toolkit v${core.VERSION}`; bar.prepend(version); }
-          version.className = 'wm-toolbar-version';
+          bar.querySelectorAll(':scope > small, .wm-toolbar-version').forEach(node => node.remove());
+          let brand = bar.querySelector('.wm-toolbar-brand');
+          if (!brand) {
+            brand = document.createElement('div');
+            brand.className = 'wm-toolbar-brand';
+            brand.innerHTML = '<span class="wm-brand-icon">✦</span><span class="wm-brand-title">WM Tools</span>';
+            brand.title = 'WikiMaster Tools · Prix et outils de collection';
+            bar.prepend(brand);
+          }
           bar.querySelectorAll('.wm-sponsor-note').forEach(node => node.remove());
           ensureActivityButtons(bar); bar.append(options());
         }

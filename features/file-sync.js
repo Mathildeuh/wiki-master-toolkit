@@ -201,7 +201,7 @@
         if (document.getElementById('wm-file-sync-dialog')) return;
         const overlay = document.createElement('div'); overlay.className = 'wm-modal-overlay'; overlay.id = 'wm-file-sync-dialog';
         const modal = document.createElement('div'); modal.className = 'wm-modal wm-file-sync-modal';
-        const heading = document.createElement('h2'); heading.textContent = `Synchronisation · v${core.VERSION}`;
+        const heading = document.createElement('h2'); heading.textContent = 'Synchronisation locale';
         const text = document.createElement('p');
         text.textContent = 'Choisis un dossier dédié dans Google Drive sur chaque ordinateur. Utilise le même dossier pour le même compte WikiMasters, et un dossier différent pour chaque compte. Tes prix et statistiques actuels sont conservés et ajoutés automatiquement. Google Drive doit être installé et synchroniser ce dossier local.';
         const note = document.createElement('p'); note.textContent = 'La synchronisation fonctionne pendant que WikiMasters est ouvert. Seuls les prix et statistiques de tirage sont partagés.';

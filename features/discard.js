@@ -220,7 +220,7 @@
         const element = (tag, className, text) => { const node = document.createElement(tag); if (className) node.className = className; if (text != null) node.textContent = text; return node; };
         const overlay = element('div', 'wm-modal-overlay'); overlay.id = 'wm-discard-dialog';
         const modal = element('div', 'wm-modal wm-discard-modal'); modal.setAttribute('role', 'dialog'); modal.setAttribute('aria-modal', 'true'); modal.setAttribute('aria-labelledby', 'wm-discard-heading');
-        const heading = element('h2', '', `Discard · v${core.VERSION}`); heading.id = 'wm-discard-heading';
+        const heading = element('h2', '', 'Défausse intelligente'); heading.id = 'wm-discard-heading';
         const note = element('p', '', 'Sélection depuis le même cache que « Plus chères », en prix croissants. Moy. — après une requête réussie = 0 W pour cette sélection. Erreurs API, prix en attente et cartes jamais analysées sont exclus.');
         const protectedNote = element('p', 'wm-discard-protection', 'Toujours conservés : favoris, cartes brillantes, cartes en échange ou en vente. Aucune carte n’est défaussée avant ta confirmation.');
         const label = element('label', 'wm-discard-threshold', 'Prix moyen maximal (W) : ');
@@ -290,6 +290,21 @@
             price.title = `${row.noAverage ? 'Moyenne absente après une requête réussie : comptée comme 0 W pour la sélection. ' : ''}Prix enregistré le ${new Date(row.fetchedAt).toLocaleString('fr-FR')} · exemplaire ${row.ownedId}`;
             rowLabel.append(checkbox, thumb, info, price); list.append(rowLabel);
           }
+          const selectAllBtn = element('button', 'wm-tool-button wm-quiet-button', 'Tout cocher');
+          selectAllBtn.type = 'button';
+          selectAllBtn.disabled = busy || finished || !preview.selected.length;
+          selectAllBtn.addEventListener('click', () => { excluded.clear(); renderPreview(); });
+
+          const deselectAllBtn = element('button', 'wm-tool-button wm-quiet-button', 'Tout décocher');
+          deselectAllBtn.type = 'button';
+          deselectAllBtn.disabled = busy || finished || !preview.selected.length;
+          deselectAllBtn.addEventListener('click', () => {
+            for (const row of preview.selected) excluded.add(row.ownedId);
+            renderPreview();
+          });
+
+          pagination.append(selectAllBtn, deselectAllBtn);
+
           if (pages > 1) {
             for (const [text, delta] of [['←', -1], ['→', 1]]) {
               const node = element('button', 'wm-tool-button', text); node.type = 'button'; node.disabled = busy || page + delta < 0 || page + delta >= pages;

@@ -97,10 +97,11 @@
         bar.id = 'wm-tools-bar';
         bar.className = 'wm-tools-bar';
 
-        const version = document.createElement('small');
-        version.textContent = `WM Toolkit v${runtime.core.VERSION}`;
-        version.title = 'Prix conservés sans expiration ; nouvelles cartes chargées automatiquement';
-        bar.append(version);
+        const brand = document.createElement('div');
+        brand.className = 'wm-toolbar-brand';
+        brand.innerHTML = '<span class="wm-brand-icon">✦</span><span class="wm-brand-title">WM Tools</span>';
+        brand.title = 'Prix conservés sans expiration ; nouvelles cartes chargées automatiquement';
+        bar.append(brand);
 
         if (bulkEnabled) {
           bulkButton = document.createElement('button');

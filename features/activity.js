@@ -155,7 +155,7 @@
         const overlay = element('div', 'wm-modal-overlay'); overlay.id = id;
         const modal = element('div', 'wm-modal wm-activity-modal');
         const header = element('header', 'wm-dialog-header'), copy = element('div');
-        copy.append(element('span', 'wm-eyebrow', `WIKI MASTER TOOLKIT · ${core.VERSION}`), element('h2', '', title), element('p', 'wm-muted', subtitle));
+        copy.append(element('span', 'wm-eyebrow', 'ACTIVITÉ DU MARCHÉ'), element('h2', '', title), element('p', 'wm-muted', subtitle));
         const close = button('×', () => overlay.remove(), 'wm-dialog-close'); close.setAttribute('aria-label', 'Fermer');
         header.append(copy, close); const body = element('div', 'wm-dialog-body'); modal.append(header, body); overlay.append(modal); document.body.append(overlay);
         return { overlay, modal, header, body };

@@ -285,7 +285,11 @@
         hint.className = 'wm-ranking-sale-hint';
         hint.textContent = 'Chaque bouton utilise ces deux valeurs.';
 
-        saleControls.append(priceField, durationField, hint);
+        const saleBanner = document.createElement('div');
+        saleBanner.className = 'wm-ranking-sale-banner';
+        saleBanner.hidden = true;
+
+        saleControls.append(priceField, durationField, hint, saleBanner);
 
         const tagKey = (tag) => tag.id || tag.name;
         const rowTags = (row) => mergeTags(row.tags);
@@ -361,10 +365,35 @@
 
         fillTagOptions();
 
+        const searchInput = document.createElement('input');
+        searchInput.type = 'search';
+        searchInput.className = 'wm-ranking-search-input';
+        searchInput.placeholder = '🔍 Rechercher une carte…';
+        searchInput.setAttribute('aria-label', 'Rechercher une carte');
+
+        const raritySelect = document.createElement('select');
+        raritySelect.className = 'wm-ranking-filter-rarity';
+        raritySelect.setAttribute('aria-label', 'Filtrer par rareté');
+        const rarities = [
+          ['', 'Toutes les raretés'],
+          ['L', 'Légendaires (L)'],
+          ['UR', 'Ultra Rares (UR)'],
+          ['SR', 'Super Rares (SR)'],
+          ['R', 'Rares (R)'],
+          ['PC', 'Peu Communes (PC)'],
+          ['C', 'Communes (C)']
+        ];
+        for (const [rVal, rLabel] of rarities) {
+          const opt = document.createElement('option');
+          opt.value = rVal;
+          opt.textContent = rLabel;
+          raritySelect.append(opt);
+        }
+
         const filterCount = document.createElement('span');
         filterCount.className = 'wm-ranking-filter-count';
 
-        filters.append(starredFilter, tagSelect, filterCount);
+        filters.append(searchInput, raritySelect, starredFilter, tagSelect, filterCount);
 
         const list = document.createElement('div');
         list.className = 'wm-ranking-list';
@@ -616,19 +645,33 @@
             }
           }
 
+          const searchQ = (searchInput.value || '').trim().toLowerCase();
+          const selectedRarity = raritySelect.value || '';
+          const isFiltering = filterActive || Boolean(searchQ) || Boolean(selectedRarity);
+
           let note = '';
           if (result?.state === 'loading') note = ' • chargement…';
           if (result?.state === 'error') note = ' • liste peut-être incomplète';
 
-          visibleRows = pool.filter(({ row }) => !starredOnly || row.starred);
+          visibleRows = pool.filter(({ row }) => {
+            if (starredOnly && !row.starred) return false;
+            if (selectedRarity && (row.rarity || '') !== selectedRarity) return false;
+            if (searchQ && !(row.title || '').toLowerCase().includes(searchQ)) return false;
+            return true;
+          });
 
           const unpricedCount = visibleRows
             .filter(({ row }) => !Number.isFinite(row.average)).length;
           const plural = visibleRows.length > 1 ? 's' : '';
 
-          filterCount.textContent = filterActive
-            ? `${visibleRows.length} carte${plural}${unpricedCount ? ` • ${unpricedCount} sans prix chargé` : ''}${note}`
-            : '';
+          const totalPricedSum = visibleRows.reduce((sum, { row }) => {
+            return sum + (Number.isFinite(row.average) ? row.average * (row.count || 1) : 0);
+          }, 0);
+          const totalText = totalPricedSum > 0 ? ` • Total estimé : ${formatAverage(totalPricedSum)} W` : '';
+
+          filterCount.textContent = isFiltering
+            ? `${visibleRows.length} carte${plural}${unpricedCount ? ` • ${unpricedCount} sans prix` : ''}${totalText}${note}`
+            : (totalPricedSum > 0 ? `Total collection : ${formatAverage(totalPricedSum)} W` : '');
 
           renderedCount = 0;
           list.replaceChildren();
@@ -649,6 +692,8 @@
 
         starredInput.addEventListener('change', applyFilters);
         tagSelect.addEventListener('change', applyFilters);
+        searchInput.addEventListener('input', applyFilters);
+        raritySelect.addEventListener('change', applyFilters);
 
         const observer = new IntersectionObserver((entries) => {
           if (entries.some((entry) => entry.isIntersecting)) {
@@ -778,6 +823,12 @@
           button.disabled = true;
           button.textContent = 'En vente ✓';
           button.title = `${formatAverage(amount)} W pendant ${formatAverage(duration)} min`;
+          const banner = document.querySelector('.wm-ranking-sale-banner');
+          if (banner) {
+            banner.hidden = false;
+            banner.className = 'wm-ranking-sale-banner is-success';
+            banner.textContent = `✓ « ${row.title} » mise en vente avec succès pour ${formatAverage(amount)} W !`;
+          }
           return;
         }
 
@@ -833,12 +884,44 @@
           }
         }
 
+        const errText = String(detail.error || '').toLowerCase();
+        let shortLabel = 'Vente refusée';
+        let clearReason = detail.error || 'Impossible de mettre cette carte en vente.';
+
+        if (detail.notOwned || errText.includes('ne possédez pas') || errText.includes('not owned')) {
+          shortLabel = 'Non possédée';
+          clearReason = 'Vous ne possédez plus cet exemplaire (déjà vendu ou échangé).';
+        } else if (detail.alreadyListed || errText.includes('already listed') || errText.includes('déjà en vente')) {
+          shortLabel = 'Déjà en vente';
+          clearReason = 'Toutes vos copies disponibles sont déjà mises en vente sur le marché.';
+        } else if (errText.includes('max') || errText.includes('limit') || errText.includes('limite') || errText.includes('concurrent')) {
+          shortLabel = 'Limite atteinte (max)';
+          clearReason = 'Limite maximale atteinte : vous avez déjà atteint le nombre maximal d’enchères simultanées autorisées sur WikiMasters.';
+        } else if (errText.includes('401') || errText.includes('403') || errText.includes('auth') || errText.includes('session')) {
+          shortLabel = 'Session expirée';
+          clearReason = 'Votre session a expiré : veuillez recharger WikiMasters et vous reconnecter.';
+        } else if (errText.includes('429') || errText.includes('rate') || errText.includes('patienter')) {
+          shortLabel = 'Trop de requêtes';
+          clearReason = 'Serveur saturé : veuillez patienter quelques secondes avant de relancer une vente.';
+        } else if (detail.ownershipError) {
+          shortLabel = 'Exemplaire indisponible';
+          clearReason = 'L’identifiant de cet exemplaire n’est plus disponible ou est engagé dans un échange.';
+        } else if (errText.includes('montant') || errText.includes('prix') || errText.includes('price')) {
+          shortLabel = 'Prix invalide';
+          clearReason = 'Le montant proposé ne respecte pas les critères de vente de WikiMasters.';
+        }
+
         button.dataset.state = 'error';
         button.disabled = false;
-        button.textContent = detail.ownershipError
-          ? 'ID invalide — réessayer'
-          : 'Erreur — réessayer';
-        button.title = detail.error || 'Impossible de mettre cette carte en vente.';
+        button.textContent = shortLabel;
+        button.title = `${clearReason} (Cliquer pour réessayer)`;
+
+        const banner = document.querySelector('.wm-ranking-sale-banner');
+        if (banner) {
+          banner.hidden = false;
+          banner.className = 'wm-ranking-sale-banner is-error';
+          banner.textContent = `⚠️ Impossible de mettre en vente « ${row.title} » : ${clearReason}`;
+        }
       });
 
 
