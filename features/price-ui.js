@@ -236,6 +236,8 @@
 
       let activeCollectionResaleSort = null;
       let isCollectionSortingActive = false;
+      let isSortingGrid = false;
+      let lastSortedSignature = '';
 
       function getCardResalePrice(cardEl) {
         if (!cardEl) return -1;
@@ -258,41 +260,69 @@
         return -1;
       }
 
-      function sortCollectionGridByPrice(direction = 'desc') {
-        if (!isCollectionPage()) return;
-        const cards = [...document.querySelectorAll('div[class*="rounded-2xl"][class*="overflow-hidden"][class*="cursor-pointer"]')];
-        if (!cards.length) return;
-
-        const parent = cards[0].parentElement;
-        if (!parent) return;
-
-        const items = cards.map((card) => ({
-          card,
-          price: getCardResalePrice(card),
-          title: (card.querySelector('h3')?.textContent || '').trim()
-        }));
-
-        items.sort((a, b) => {
-          if (direction === 'desc') {
-            if (b.price !== a.price) return b.price - a.price;
-            return a.title.localeCompare(b.title, 'fr');
-          } else {
-            if (a.price === -1 && b.price !== -1) return 1;
-            if (b.price === -1 && a.price !== -1) return -1;
-            if (a.price !== b.price) return a.price - b.price;
-            return a.title.localeCompare(b.title, 'fr');
+      function findCardGridItem(card) {
+        let node = card;
+        while (node && node.parentElement && node.parentElement.tagName !== 'MAIN') {
+          const parent = node.parentElement;
+          let count = 0;
+          for (let i = 0; i < parent.children.length; i++) {
+            if (parent.children[i].querySelector('h3')) count++;
           }
-        });
+          if (count > 1) {
+            return node;
+          }
+          node = parent;
+        }
+        return card;
+      }
 
-        items.forEach((item, idx) => {
-          item.card.style.order = String(idx);
-          parent.appendChild(item.card);
-        });
+      function sortCollectionGridByPrice(direction = 'desc') {
+        if (!isCollectionPage() || isSortingGrid) return;
+        isSortingGrid = true;
+        try {
+          const cards = [...document.querySelectorAll('div[class*="rounded-2xl"]:has(h3)')];
+          if (!cards.length) return;
+
+          const sig = direction + '|' + cards.map(c => (c.dataset.wmCardId || '') + ':' + getCardResalePrice(c)).join(',');
+          if (sig === lastSortedSignature) return;
+          lastSortedSignature = sig;
+
+          const items = cards.map((card) => ({
+            card,
+            gridItem: findCardGridItem(card),
+            price: getCardResalePrice(card),
+            title: (card.querySelector('h3')?.textContent || '').trim()
+          }));
+
+          items.sort((a, b) => {
+            if (direction === 'desc') {
+              if (b.price !== a.price) return b.price - a.price;
+              return a.title.localeCompare(b.title, 'fr');
+            } else {
+              if (a.price === -1 && b.price !== -1) return 1;
+              if (b.price === -1 && a.price !== -1) return -1;
+              if (a.price !== b.price) return a.price - b.price;
+              return a.title.localeCompare(b.title, 'fr');
+            }
+          });
+
+          // ONLY set style.order on the gridItem - NEVER move DOM nodes!
+          items.forEach((item, idx) => {
+            if (item.gridItem && item.gridItem.style.order !== String(idx)) {
+              item.gridItem.style.order = String(idx);
+            }
+          });
+        } finally {
+          isSortingGrid = false;
+        }
       }
 
       function resetCollectionGridSort() {
-        const cards = document.querySelectorAll('div[class*="rounded-2xl"][class*="overflow-hidden"][class*="cursor-pointer"]');
+        lastSortedSignature = '';
+        const cards = document.querySelectorAll('div[class*="rounded-2xl"]:has(h3)');
         cards.forEach((card) => {
+          const item = findCardGridItem(card);
+          if (item) item.style.order = '';
           card.style.order = '';
         });
       }
@@ -333,6 +363,7 @@
         function applyResaleSort(dir) {
           activeCollectionResaleSort = dir;
           isCollectionSortingActive = true;
+          lastSortedSignature = '';
 
           const sortBtn = findCollectionSortButton();
           if (sortBtn) {
