@@ -13,14 +13,30 @@
       } = runtime.core;
       const { formatAverage, chooseAverage } = runtime.priceUi;
 
+      function rarityMeta(r) {
+        switch ((r || '').toUpperCase()) {
+          case 'L': return { name: 'Légendaire', short: 'L', rank: 6, color: '#ffe144', bg: 'rgba(255, 225, 68, 0.12)', border: 'rgba(255, 225, 68, 0.35)' };
+          case 'UR': return { name: 'Ultra Rare', short: 'UR', rank: 5, color: '#fa9931', bg: 'rgba(250, 153, 49, 0.12)', border: 'rgba(250, 153, 49, 0.35)' };
+          case 'SR': return { name: 'Super Rare', short: 'SR', rank: 4, color: '#ed6fa3', bg: 'rgba(237, 111, 163, 0.12)', border: 'rgba(237, 111, 163, 0.35)' };
+          case 'R': return { name: 'Rare', short: 'R', rank: 3, color: '#c6a7f2', bg: 'rgba(198, 167, 242, 0.12)', border: 'rgba(198, 167, 242, 0.35)' };
+          case 'PC': return { name: 'Peu commune', short: 'PC', rank: 2, color: '#b1cff2', bg: 'rgba(177, 207, 242, 0.12)', border: 'rgba(177, 207, 242, 0.35)' };
+          case 'C': return { name: 'Commune', short: 'C', rank: 1, color: '#b8f2d5', bg: 'rgba(184, 242, 213, 0.12)', border: 'rgba(184, 242, 213, 0.35)' };
+          default: return { name: r || '—', short: r || '—', rank: 0, color: '#9ca3af', bg: 'rgba(255, 255, 255, 0.05)', border: 'rgba(255, 255, 255, 0.1)' };
+        }
+      }
+
       let pullRecapEnabled = runtime.settings.isEnabled('packRecap') && readLocalValue(PULL_RECAP_ENABLED_KEY) !== false;
       let activePackRecap = null;
       let packRecapDismissed = false;
       let openAllActive = false;
+      let openAllIsManual = false;
       let openAllRequestId = null;
       let openAllButton = null;
+      let openAllProgress = null;
+      let openAllLiveOverlay = null;
       let openAllSummaryCards = [];
       let openAllOpenedPacks = 0;
+      let openAllTotalPacks = null;
       let openAllError = null;
       let openAllRenderTimer = null;
       let openAllSummaryTitle = 'Cartes obtenues';
@@ -47,7 +63,6 @@
       }
 
       function lognormalSample(mu, sigma) {
-        // Box-Muller sur loi normale, puis exponentielle => lognormale.
         let u = 0;
         let v = 0;
         while (u === 0) u = Math.random();
@@ -61,10 +76,6 @@
         return Math.min(maxMs, Math.max(minMs, raw));
       }
 
-      // Active la case de confirmation de la façon la plus naturelle possible :
-      // le focus arrive juste avant l'activation (pointeur ou Tab), et la cible
-      // du clic varie — une partie des utilisateurs clique sur le libellé plutôt
-      // que sur la case elle-même.
       function humanActivateCheckbox(checkbox) {
         const label = checkbox.closest('label');
         const target = (label && Math.random() < 0.25) ? label : checkbox;
@@ -76,8 +87,6 @@
         target.click();
       }
 
-      // Valide le bouton après activation de la case : focus d'abord, puis une
-      // dernière hésitation avant le clic final.
       function humanConfirmButton(button) {
         if (!button.isConnected || button.disabled) return;
 
@@ -101,13 +110,10 @@
         const style = window.getComputedStyle(element);
         if (style.visibility === 'hidden' || style.display === 'none') return false;
 
-        // Au moins partiellement dans le viewport.
         return rect.bottom > 0 && rect.right > 0 &&
           rect.top < window.innerHeight && rect.left < window.innerWidth;
       }
 
-      // Attend qu'une condition soit vraie en sondant à intervalle irrégulier
-      // pour éviter de surcharger le thread principal pendant les animations.
       function waitFor(condition, { timeoutMs = 15000, onDone } = {}) {
         const startedAt = Date.now();
 
@@ -131,8 +137,6 @@
       function locatePendingConsent() {
         if (!isPullsPage()) return null;
 
-        // Le champ "website" est un honeypot invisible : il sert uniquement
-        // de repère pour retrouver le widget. Il ne doit jamais être manipulé.
         for (const honeypot of document.querySelectorAll('input[name="website"]')) {
           const hiddenLabel = honeypot.closest('label');
           const block = hiddenLabel?.parentElement;
@@ -162,18 +166,10 @@
         acknowledgedChecks.add(verification.block);
         const { block, checkbox, button } = verification;
 
-        // Séquence de restauration d'une préférence mémorisée :
-        // 1. stabilisation de l'interface (bloc fraîchement monté) ~0.3 – 1.8 s
-        // 2. relecture du libellé avant de cocher                  ~1.2 – 9 s (lognormal)
-        // 3. restauration de l'état de la case (focus puis clic)
-        // 4. délibération avant de valider                         ~0.2 – 4 s (lognormal)
-        // 5. clic sur « Continuer »
         const settleMs = uiResponseProfile.settleDelay;
         const readingDelay = humanDelay(2400, 0.55, 1200, 9000, uiResponseProfile.responsePace);
 
         setTimeout(() => {
-          // On ne restaure rien tant que le bloc n'est pas réellement visible et
-          // que l'onglet n'a pas le focus (évite les interactions perdues).
           waitFor(() => isElementEffectivelyVisible(block), {
             onDone: (visible) => {
               if (!visible || !checkbox.isConnected) return;
@@ -181,8 +177,6 @@
               setTimeout(() => {
                 if (!checkbox.isConnected) return;
 
-                // Une petite distraction occasionnelle avant de confirmer —
-                // notification, coup d'œil ailleurs — puis on s'y remet.
                 const commit = () => {
                   if (!checkbox.isConnected || !button.isConnected) return;
 
@@ -190,8 +184,6 @@
                     humanActivateCheckbox(checkbox);
                   }
 
-                  // React peut laisser le bouton disabled pendant quelques ticks.
-                  // On attend qu'il soit réellement cliquable avant de valider.
                   waitFor(() => (
                     checkbox.isConnected &&
                     button.isConnected &&
@@ -409,12 +401,288 @@
         scheduleNextAutoOpen({ keepExisting: false });
       }
 
+      // ----------------------------------------------------------------------
+      // LIVE OPENING HUD (Pour l'ouverture manuelle fluide et animée)
+      // ----------------------------------------------------------------------
+      function showLiveOpeningHud() {
+        document.getElementById('wm-open-all-live')?.remove();
+
+        const overlay = document.createElement('div');
+        overlay.id = 'wm-open-all-live';
+        overlay.className = 'wm-modal-overlay wm-live-overlay';
+
+        const modal = document.createElement('div');
+        modal.className = 'wm-modal wm-live-modal';
+
+        const header = document.createElement('div');
+        header.className = 'wm-live-header';
+
+        const headerLeft = document.createElement('div');
+        headerLeft.className = 'wm-live-header-info';
+
+        const titleRow = document.createElement('div');
+        titleRow.className = 'wm-live-title-row';
+
+        const pulseDot = document.createElement('span');
+        pulseDot.className = 'wm-live-pulse-dot';
+
+        const title = document.createElement('h2');
+        title.className = 'wm-live-title';
+        title.textContent = 'Ouverture de tous les paquets';
+
+        titleRow.append(pulseDot, title);
+
+        const statusPill = document.createElement('div');
+        statusPill.className = 'wm-live-status-pill';
+        statusPill.dataset.role = 'status-pill';
+        statusPill.innerHTML = '<span class="wm-live-status-icon">📦</span> <span class="wm-live-status-text">Préparation de l’ouverture…</span>';
+
+        headerLeft.append(titleRow, statusPill);
+
+        const minBtn = document.createElement('button');
+        minBtn.type = 'button';
+        minBtn.className = 'wm-filter-pill-btn wm-live-minimize-btn';
+        minBtn.textContent = '⤓ Réduire';
+        minBtn.title = 'Réduire dans le coin de l’écran pour naviguer';
+        minBtn.addEventListener('click', () => {
+          overlay.classList.toggle('is-minimized');
+          minBtn.textContent = overlay.classList.contains('is-minimized') ? '⤢ Agrandir' : '⤓ Réduire';
+        });
+
+        header.append(headerLeft, minBtn);
+
+        // Section progression
+        const progressSection = document.createElement('div');
+        progressSection.className = 'wm-live-progress-section';
+
+        const progressLabels = document.createElement('div');
+        progressLabels.className = 'wm-live-progress-labels';
+
+        const packCounter = document.createElement('span');
+        packCounter.className = 'wm-live-pack-counter';
+        packCounter.dataset.role = 'pack-counter';
+        packCounter.textContent = 'En attente du premier paquet…';
+
+        const percentage = document.createElement('span');
+        percentage.className = 'wm-live-percentage';
+        percentage.dataset.role = 'percentage';
+        percentage.textContent = '0%';
+
+        progressLabels.append(packCounter, percentage);
+
+        const progressTrack = document.createElement('div');
+        progressTrack.className = 'wm-live-progress-track';
+
+        const progressBar = document.createElement('div');
+        progressBar.className = 'wm-live-progress-bar';
+        progressBar.dataset.role = 'progress-bar';
+        progressBar.style.width = '0%';
+
+        progressTrack.append(progressBar);
+        progressSection.append(progressLabels, progressTrack);
+
+        // Zone de scène (affichage des cartes en direct)
+        const stageWrap = document.createElement('div');
+        stageWrap.className = 'wm-live-stage-wrap';
+
+        const stageHeader = document.createElement('div');
+        stageHeader.className = 'wm-live-stage-header';
+
+        const stageLabel = document.createElement('span');
+        stageLabel.className = 'wm-live-stage-label';
+        stageLabel.textContent = 'Cartes tirées en direct';
+
+        const cardTally = document.createElement('span');
+        cardTally.className = 'wm-live-card-tally';
+        cardTally.dataset.role = 'card-tally';
+        cardTally.textContent = '0 carte';
+
+        stageHeader.append(stageLabel, cardTally);
+
+        const cardsDeck = document.createElement('div');
+        cardsDeck.className = 'wm-live-cards-deck';
+        cardsDeck.dataset.role = 'cards-deck';
+
+        const placeholder = document.createElement('div');
+        placeholder.className = 'wm-live-deck-placeholder';
+        placeholder.innerHTML = '<span class="wm-pack-icon-animated">✨</span><span>Les cartes s’afficheront ici au fur et à mesure…</span>';
+        cardsDeck.append(placeholder);
+
+        stageWrap.append(stageHeader, cardsDeck);
+
+        // Barre basse de stats
+        const footer = document.createElement('div');
+        footer.className = 'wm-live-footer';
+
+        const statsBar = document.createElement('div');
+        statsBar.className = 'wm-live-stats-bar';
+
+        const statPacks = document.createElement('span');
+        statPacks.className = 'wm-stat-pill';
+        statPacks.innerHTML = '<span class="wm-stat-label">Paquets</span> <span class="wm-stat-val" data-role="stat-packs">0</span>';
+
+        const statCards = document.createElement('span');
+        statCards.className = 'wm-stat-pill';
+        statCards.innerHTML = '<span class="wm-stat-label">Cartes</span> <span class="wm-stat-val" data-role="stat-cards">0</span>';
+
+        const statValue = document.createElement('span');
+        statValue.className = 'wm-stat-pill wm-stat-highlight';
+        statValue.dataset.role = 'stat-value-pill';
+        statValue.innerHTML = '<span class="wm-stat-label">Valeur</span> <span class="wm-stat-val" data-role="stat-value">0 W</span>';
+
+        statsBar.append(statPacks, statCards, statValue);
+        footer.append(statsBar);
+
+        modal.append(header, progressSection, stageWrap, footer);
+        overlay.append(modal);
+        document.body.append(overlay);
+        openAllLiveOverlay = overlay;
+      }
+
+      function updateLiveOpeningCards(packCards) {
+        if (!openAllLiveOverlay) return;
+
+        const deck = openAllLiveOverlay.querySelector('[data-role="cards-deck"]');
+        if (!deck) return;
+
+        deck.replaceChildren();
+
+        packCards.forEach((card, index) => {
+          const rMeta = rarityMeta(card.rarity);
+          const cardEl = document.createElement('div');
+          cardEl.className = 'wm-live-card-item wm-card-reveal';
+          cardEl.style.animationDelay = `${index * 70}ms`;
+          cardEl.style.borderColor = rMeta.border;
+
+          const thumbWrap = document.createElement('div');
+          thumbWrap.className = 'wm-live-card-thumb';
+
+          if (card.imageUrl) {
+            const img = document.createElement('img');
+            img.src = card.imageUrl;
+            img.alt = card.title || '';
+            img.loading = 'lazy';
+            thumbWrap.append(img);
+          } else {
+            const fallback = document.createElement('div');
+            fallback.className = 'wm-ranking-thumb-fallback';
+            fallback.style.background = `linear-gradient(180deg, ${rMeta.bg} 0%, rgba(12, 16, 14, 0.95) 100%)`;
+            fallback.style.color = rMeta.color;
+            fallback.textContent = (card.rarity || 'W').toUpperCase();
+            thumbWrap.append(fallback);
+
+            if (runtime.imageResolver?.resolveMissingImage) {
+              runtime.imageResolver.resolveMissingImage(card.title).then((entry) => {
+                if (entry?.found && entry.url && thumbWrap.isConnected) {
+                  const resolvedImg = document.createElement('img');
+                  resolvedImg.src = entry.url;
+                  resolvedImg.alt = card.title || '';
+                  resolvedImg.loading = 'lazy';
+                  resolvedImg.onload = () => {
+                    fallback.remove();
+                    thumbWrap.append(resolvedImg);
+                  };
+                }
+              }).catch(() => {});
+            }
+          }
+
+          const rarityTag = document.createElement('span');
+          rarityTag.className = 'wm-live-card-rarity';
+          rarityTag.style.color = rMeta.color;
+          rarityTag.style.backgroundColor = rMeta.bg;
+          rarityTag.style.borderColor = rMeta.border;
+          rarityTag.textContent = rMeta.name;
+
+          const titleEl = document.createElement('div');
+          titleEl.className = 'wm-live-card-title';
+          titleEl.textContent = card.title;
+          titleEl.title = card.title;
+
+          const priceEl = document.createElement('div');
+          priceEl.className = 'wm-live-card-price';
+
+          const entry = cacheMemory.get(card.id);
+          const average = entry ? chooseAverage(entry, null, card.rarity || null) : null;
+          if (Number.isFinite(average)) {
+            priceEl.textContent = `${formatAverage(average)} W`;
+          } else {
+            priceEl.innerHTML = '<span class="wm-average-spinner"></span>';
+          }
+
+          cardEl.append(thumbWrap, rarityTag, titleEl, priceEl);
+          deck.append(cardEl);
+        });
+      }
+
+      function updateLiveOpeningProgress({ openedPacks, packsRemaining, waiting, waitMs }) {
+        if (!openAllLiveOverlay) return;
+
+        const total = Number.isFinite(packsRemaining) ? (openedPacks + packsRemaining) : (openAllTotalPacks || openedPacks);
+        if (Number.isFinite(total) && total > 0) openAllTotalPacks = total;
+
+        const statusPill = openAllLiveOverlay.querySelector('[data-role="status-pill"]');
+        const packCounter = openAllLiveOverlay.querySelector('[data-role="pack-counter"]');
+        const percentage = openAllLiveOverlay.querySelector('[data-role="percentage"]');
+        const progressBar = openAllLiveOverlay.querySelector('[data-role="progress-bar"]');
+        const cardTally = openAllLiveOverlay.querySelector('[data-role="card-tally"]');
+        const statPacks = openAllLiveOverlay.querySelector('[data-role="stat-packs"]');
+        const statCards = openAllLiveOverlay.querySelector('[data-role="stat-cards"]');
+        const statValue = openAllLiveOverlay.querySelector('[data-role="stat-value"]');
+        const statValuePill = openAllLiveOverlay.querySelector('[data-role="stat-value-pill"]');
+
+        const pct = openAllTotalPacks && openAllTotalPacks > 0
+          ? Math.min(100, Math.round((openedPacks / openAllTotalPacks) * 100))
+          : 0;
+
+        if (progressBar) progressBar.style.width = `${pct}%`;
+        if (percentage) percentage.textContent = `${pct}%`;
+
+        if (packCounter) {
+          packCounter.textContent = openAllTotalPacks
+            ? `Paquet ${openedPacks} sur ${openAllTotalPacks}`
+            : `${openedPacks} paquet${openedPacks > 1 ? 's' : ''} ouvert${openedPacks > 1 ? 's' : ''}`;
+        }
+
+        if (cardTally) {
+          cardTally.textContent = `${openAllSummaryCards.length} carte${openAllSummaryCards.length > 1 ? 's' : ''}`;
+        }
+
+        if (statPacks) statPacks.textContent = String(openedPacks);
+        if (statCards) statCards.textContent = String(openAllSummaryCards.length);
+
+        if (waiting) {
+          const s = Math.max(1, Math.ceil(Number(waitMs || 0) / 1000));
+          if (statusPill) {
+            statusPill.innerHTML = `<span class="wm-live-status-icon">⏳</span> <span class="wm-live-status-text">Pause anti-flood (${s}s)…</span>`;
+          }
+        } else if (openedPacks > 0) {
+          if (statusPill) {
+            statusPill.innerHTML = `<span class="wm-live-status-icon">⚡</span> <span class="wm-live-status-text">Paquet ${openedPacks} ouvert !</span>`;
+          }
+        }
+
+        // Calcul valeur cumulée
+        const knownSum = openAllSummaryCards.reduce((sum, card) => {
+          const entry = cacheMemory.get(card.id);
+          const avg = entry ? chooseAverage(entry, null, card.rarity || null) : null;
+          return sum + (Number.isFinite(avg) ? avg : 0);
+        }, 0);
+
+        if (knownSum > 0 && statValue && statValuePill) {
+          statValue.textContent = `${formatAverage(Math.round(knownSum))} W`;
+          statValuePill.style.display = 'inline-flex';
+        }
+      }
+
       function startOpenAllPacks({ automatic = false } = {}) {
         if (openAllActive) return false;
 
         openAllActive = true;
+        openAllIsManual = !automatic;
         openAllSummaryCards = [];
         openAllOpenedPacks = 0;
+        openAllTotalPacks = null;
         openAllError = null;
         openAllRequestId = `${automatic ? 'auto-packs' : 'packs'}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
 
@@ -427,8 +695,16 @@
           openAllButton.textContent = automatic ? 'Auto ouverture…' : 'Ouverture…';
         }
 
+        if (openAllProgress) {
+          openAllProgress.hidden = true;
+        }
+
         document.getElementById('wm-pack-recap')?.remove();
         document.getElementById('wm-open-all-overlay')?.remove();
+
+        if (openAllIsManual) {
+          showLiveOpeningHud();
+        }
 
         window.dispatchEvent(new CustomEvent('wm-average-open-all-packs', {
           detail: { requestId: openAllRequestId }
@@ -572,11 +848,16 @@
           openAllButton.className = 'wm-tool-button wm-open-all-button';
           openAllButton.textContent = openAllActive ? 'Ouverture…' : 'Tout ouvrir';
           openAllButton.disabled = openAllActive;
-          openAllButton.title = 'Ouvrir tous les paquets disponibles sans afficher les animations';
+          openAllButton.title = 'Ouvrir tous les paquets disponibles avec suivi en direct';
           openAllButton.addEventListener('click', () => {
             handleOpenAllPacksClick().catch((error) => reportError('tout ouvrir', error));
           });
-          info.append(openAllButton);
+
+          openAllProgress = document.createElement('span');
+          openAllProgress.className = 'wm-open-all-progress';
+          openAllProgress.hidden = true;
+
+          info.append(openAllButton, openAllProgress);
         }
 
         if (
@@ -607,7 +888,7 @@
           title.textContent = 'Ouvrir tous les paquets ?';
 
           const text = document.createElement('p');
-          text.textContent = 'Tous les paquets disponibles vont être ouverts immédiatement, sans animation. Cette action consomme les paquets.';
+          text.textContent = 'Tous les paquets disponibles vont être ouverts automatiquement. Les cartes obtenues s’afficheront en direct avec leurs cotes.';
 
           const actions = document.createElement('div');
           actions.className = 'wm-modal-actions';
@@ -650,6 +931,16 @@
       }
 
       function setOpenAllButtonProgress(openedPacks, packsRemaining = null) {
+        if (openAllProgress) {
+          if (Number.isFinite(Number(packsRemaining))) {
+            const total = openedPacks + Number(packsRemaining);
+            openAllProgress.textContent = `${openedPacks}/${total} ouverts`;
+          } else {
+            openAllProgress.textContent = `${openedPacks} ouverts`;
+          }
+          openAllProgress.hidden = false;
+        }
+
         if (!openAllButton) return;
 
         if (Number.isFinite(Number(packsRemaining))) {
@@ -674,108 +965,337 @@
         }, 100);
       }
 
+      // ----------------------------------------------------------------------
+      // MENU "CARTES OBTENUES" REDESIGN COMPLET
+      // ----------------------------------------------------------------------
+      let summaryViewMode = 'grid'; // 'grid' | 'list'
+      let summarySearchQuery = '';
+      let summaryRarityFilter = '';
+      let summarySortOrder = 'price_desc'; // 'price_desc' | 'price_asc' | 'rarity' | 'chronological'
+
       function renderOpenAllSummary() {
         const overlay = document.getElementById('wm-open-all-overlay');
         if (!overlay || !openAllSummaryCards.length) return;
 
-        const list = overlay.querySelector('.wm-open-all-list');
         const subtitle = overlay.querySelector('[data-role="subtitle"]');
         const footer = overlay.querySelector('[data-role="footer"]');
-        if (!list || !subtitle || !footer) return;
+        const container = overlay.querySelector('[data-role="cards-container"]');
+        if (!subtitle || !footer || !container) return;
 
-        const rows = openAllSummaryCards.map((card, index) => {
+        // Regroupement des doublons tirés
+        const groupedMap = new Map();
+        openAllSummaryCards.forEach((card, originalIndex) => {
+          const existing = groupedMap.get(card.id);
+          if (existing) {
+            existing.count += 1;
+          } else {
+            groupedMap.set(card.id, {
+              ...card,
+              count: 1,
+              _firstIndex: originalIndex
+            });
+          }
+        });
+
+        const rows = [...groupedMap.values()].map((card) => {
           const entry = cacheMemory.get(card.id);
           const loaded = Boolean(entry);
           const average = entry ? chooseAverage(entry, null, card.rarity || null) : null;
-          return { ...card, _originalIndex: index, loaded, average };
+          return { ...card, loaded, average };
         });
 
-        rows.sort((a, b) => {
-          const aPrice = Number.isFinite(a.average) ? a.average : -Infinity;
-          const bPrice = Number.isFinite(b.average) ? b.average : -Infinity;
-          if (bPrice !== aPrice) return bPrice - aPrice;
-
-          if (a.loaded !== b.loaded) return a.loaded ? 1 : -1;
-          return a._originalIndex - b._originalIndex;
-        });
-
-        const loadedCount = rows.filter((row) => row.loaded).length;
-        const pricedRows = rows.filter((row) => Number.isFinite(row.average));
-        const total = pricedRows.reduce((sum, row) => sum + row.average, 0);
-
-        subtitle.textContent =
-          `${openAllOpenedPacks} paquet${openAllOpenedPacks > 1 ? 's' : ''} • ${rows.length} cartes • ${loadedCount}/${rows.length} prix chargés`;
-
-        list.replaceChildren();
-        const fragment = document.createDocumentFragment();
-
-        rows.forEach((row, index) => {
-          const item = document.createElement('div');
-          item.className = 'wm-open-all-row';
-
-          const rank = document.createElement('span');
-          rank.className = 'wm-open-all-rank';
-          rank.textContent = String(index + 1);
-
-          const thumb = document.createElement('span');
-          thumb.className = 'wm-open-all-thumb';
-          if (row.imageUrl) {
-            const img = document.createElement('img');
-            img.src = row.imageUrl;
-            img.alt = '';
-            img.loading = 'lazy';
-            thumb.append(img);
+        // Filtrage
+        const filtered = rows.filter((row) => {
+          if (summarySearchQuery && !row.title.toLowerCase().includes(summarySearchQuery.toLowerCase())) {
+            return false;
           }
-
-          const info = document.createElement('span');
-          info.className = 'wm-open-all-info';
-
-          const name = document.createElement('strong');
-          name.textContent = row.title;
-
-          const meta = document.createElement('span');
-          meta.textContent = row.rarity || '—';
-
-          info.append(name, meta);
-
-          const value = document.createElement('span');
-          value.className = 'wm-open-all-price';
-
-          if (!row.loaded) {
-            value.classList.add('is-loading');
-            const spinner = document.createElement('span');
-            spinner.className = 'wm-average-spinner';
-            value.append(spinner, document.createTextNode('…'));
-          } else if (Number.isFinite(row.average)) {
-            value.textContent = `${formatAverage(row.average)} W`;
-          } else {
-            value.textContent = '—';
-            value.classList.add('is-empty');
+          if (summaryRarityFilter && (row.rarity || '').toUpperCase() !== summaryRarityFilter.toUpperCase()) {
+            return false;
           }
-
-          item.append(rank, thumb, info, value);
-          fragment.append(item);
+          return true;
         });
 
-        list.append(fragment);
+        // Tri
+        filtered.sort((a, b) => {
+          if (summarySortOrder === 'price_desc') {
+            const aPrice = Number.isFinite(a.average) ? a.average : -Infinity;
+            const bPrice = Number.isFinite(b.average) ? b.average : -Infinity;
+            if (bPrice !== aPrice) return bPrice - aPrice;
+            return a.title.localeCompare(b.title, 'fr');
+          }
+          if (summarySortOrder === 'price_asc') {
+            const aPrice = Number.isFinite(a.average) ? a.average : Infinity;
+            const bPrice = Number.isFinite(b.average) ? b.average : Infinity;
+            if (aPrice !== bPrice) return aPrice - bPrice;
+            return a.title.localeCompare(b.title, 'fr');
+          }
+          if (summarySortOrder === 'rarity') {
+            const aRank = rarityMeta(a.rarity).rank;
+            const bRank = rarityMeta(b.rarity).rank;
+            if (bRank !== aRank) return bRank - aRank;
+            const aPrice = Number.isFinite(a.average) ? a.average : -Infinity;
+            const bPrice = Number.isFinite(b.average) ? b.average : -Infinity;
+            return bPrice - aPrice;
+          }
+          // chronologique
+          return a._firstIndex - b._firstIndex;
+        });
+
+        // Stats globales
+        const totalCardsCount = openAllSummaryCards.length;
+        const loadedCount = rows.filter((r) => r.loaded).length;
+        const pricedRows = rows.filter((r) => Number.isFinite(r.average));
+        const totalEstimatedValue = pricedRows.reduce((sum, r) => sum + (r.average * r.count), 0);
+        const rarePlusCount = openAllSummaryCards.filter((c) => {
+          const r = (c.rarity || '').toUpperCase();
+          return ['R', 'SR', 'UR', 'L'].includes(r);
+        }).length;
+
+        // Mise à jour de l'en-tête de stats
+        subtitle.innerHTML = `
+          <span class="wm-stat-pill wm-stat-highlight">
+            <span class="wm-stat-label">Valeur totale estimée</span>
+            <span class="wm-stat-val">${formatAverage(Math.round(totalEstimatedValue))} W</span>
+          </span>
+          <span class="wm-stat-pill">
+            <span class="wm-stat-label">Paquets ouverts</span>
+            <span class="wm-stat-val">${openAllOpenedPacks}</span>
+          </span>
+          <span class="wm-stat-pill">
+            <span class="wm-stat-label">Cartes obtenues</span>
+            <span class="wm-stat-val">${totalCardsCount}</span>
+          </span>
+          ${rarePlusCount > 0 ? `
+            <span class="wm-stat-pill">
+              <span class="wm-stat-label">Rares & +</span>
+              <span class="wm-stat-val" style="color:#fde047;">★ ${rarePlusCount}</span>
+            </span>
+          ` : ''}
+          <span class="wm-stat-pill">
+            <span class="wm-stat-label">Cotées</span>
+            <span class="wm-stat-val">${loadedCount}/${rows.length}</span>
+          </span>
+        `;
+
+        // Rendu du conteneur de cartes (Grille ou Liste)
+        container.replaceChildren();
+
+        if (summaryViewMode === 'grid') {
+          container.className = 'wm-open-all-grid';
+
+          filtered.forEach((row, index) => {
+            const rMeta = rarityMeta(row.rarity);
+            const cardEl = document.createElement('div');
+            cardEl.className = 'wm-summary-card';
+            cardEl.style.borderColor = rMeta.border;
+
+            // Podium pour les 3 cartes les plus chères
+            if (summarySortOrder === 'price_desc' && Number.isFinite(row.average) && index < 3) {
+              const medal = document.createElement('div');
+              medal.className = `wm-summary-podium-badge wm-rank-${index + 1}`;
+              medal.textContent = `#${index + 1}`;
+              cardEl.append(medal);
+            }
+
+            // Badge d'exemplaires multiples
+            if (row.count > 1) {
+              const countBadge = document.createElement('div');
+              countBadge.className = 'wm-summary-count-badge';
+              countBadge.textContent = `×${row.count}`;
+              cardEl.append(countBadge);
+            }
+
+            // Image de la carte
+            const thumb = document.createElement('div');
+            thumb.className = 'wm-summary-thumb';
+
+            if (row.imageUrl) {
+              const img = document.createElement('img');
+              img.src = row.imageUrl;
+              img.alt = row.title || '';
+              img.loading = 'lazy';
+              thumb.append(img);
+            } else {
+              const fallback = document.createElement('div');
+              fallback.className = 'wm-ranking-thumb-fallback';
+              fallback.style.background = `linear-gradient(180deg, ${rMeta.bg} 0%, rgba(12, 16, 14, 0.95) 100%)`;
+              fallback.style.color = rMeta.color;
+              fallback.textContent = (row.rarity || 'W').toUpperCase();
+              thumb.append(fallback);
+
+              if (runtime.imageResolver?.resolveMissingImage) {
+                runtime.imageResolver.resolveMissingImage(row.title).then((entry) => {
+                  if (entry?.found && entry.url && thumb.isConnected) {
+                    const resolvedImg = document.createElement('img');
+                    resolvedImg.src = entry.url;
+                    resolvedImg.alt = row.title || '';
+                    resolvedImg.loading = 'lazy';
+                    resolvedImg.onload = () => {
+                      fallback.remove();
+                      thumb.append(resolvedImg);
+                    };
+                  }
+                }).catch(() => {});
+              }
+            }
+
+            // Badge rareté
+            const rarityPill = document.createElement('div');
+            rarityPill.className = 'wm-summary-rarity-pill';
+            rarityPill.style.color = rMeta.color;
+            rarityPill.style.backgroundColor = rMeta.bg;
+            rarityPill.style.borderColor = rMeta.border;
+            rarityPill.textContent = rMeta.name;
+
+            // Titre
+            const titleEl = document.createElement('div');
+            titleEl.className = 'wm-summary-card-title';
+            titleEl.textContent = row.title;
+            titleEl.title = row.title;
+
+            // Prix
+            const priceEl = document.createElement('div');
+            priceEl.className = 'wm-summary-card-price';
+
+            if (!row.loaded) {
+              priceEl.innerHTML = '<span class="wm-average-spinner"></span> <span style="font-size:11px;color:var(--wm-muted);">Estimation…</span>';
+            } else if (Number.isFinite(row.average)) {
+              priceEl.innerHTML = `<span class="wm-price-val">${formatAverage(row.average)} W</span> <span class="wm-price-sub">cote</span>`;
+            } else {
+              priceEl.innerHTML = '<span style="color:var(--wm-faint);">Sans cote</span>';
+            }
+
+            cardEl.append(thumb, rarityPill, titleEl, priceEl);
+            container.append(cardEl);
+          });
+        } else {
+          // Mode Liste tabulaire
+          container.className = 'wm-open-all-list';
+
+          filtered.forEach((row, index) => {
+            const rMeta = rarityMeta(row.rarity);
+            const item = document.createElement('div');
+            item.className = 'wm-open-all-row';
+
+            const rank = document.createElement('span');
+            rank.className = 'wm-open-all-rank';
+            if (index < 3 && summarySortOrder === 'price_desc' && Number.isFinite(row.average)) {
+              rank.className += ` wm-rank-${index + 1}`;
+              rank.textContent = `#${index + 1}`;
+            } else {
+              rank.textContent = String(index + 1);
+            }
+
+            const thumb = document.createElement('span');
+            thumb.className = 'wm-open-all-thumb';
+            if (row.imageUrl) {
+              const img = document.createElement('img');
+              img.src = row.imageUrl;
+              img.alt = '';
+              img.loading = 'lazy';
+              thumb.append(img);
+            } else {
+              const fallback = document.createElement('div');
+              fallback.className = 'wm-ranking-thumb-fallback';
+              fallback.style.background = rMeta.bg;
+              fallback.style.color = rMeta.color;
+              fallback.textContent = (row.rarity || 'W').toUpperCase();
+              thumb.append(fallback);
+            }
+
+            const info = document.createElement('span');
+            info.className = 'wm-open-all-info';
+
+            const name = document.createElement('strong');
+            name.textContent = row.title;
+
+            const metaWrap = document.createElement('span');
+            metaWrap.className = 'wm-open-all-meta-wrap';
+
+            const rPill = document.createElement('span');
+            rPill.className = 'wm-ranking-rarity-pill';
+            rPill.style.color = rMeta.color;
+            rPill.style.backgroundColor = rMeta.bg;
+            rPill.style.borderColor = rMeta.border;
+            rPill.textContent = rMeta.name;
+            metaWrap.append(rPill);
+
+            if (row.count > 1) {
+              const countPill = document.createElement('span');
+              countPill.className = 'wm-ranking-count';
+              countPill.textContent = `×${row.count}`;
+              metaWrap.append(countPill);
+            }
+
+            info.append(name, metaWrap);
+
+            const value = document.createElement('span');
+            value.className = 'wm-open-all-price';
+
+            if (!row.loaded) {
+              value.classList.add('is-loading');
+              const spinner = document.createElement('span');
+              spinner.className = 'wm-average-spinner';
+              value.append(spinner, document.createTextNode('…'));
+            } else if (Number.isFinite(row.average)) {
+              value.textContent = `${formatAverage(row.average)} W`;
+            } else {
+              value.textContent = '—';
+              value.classList.add('is-empty');
+            }
+
+            item.append(rank, thumb, info, value);
+            container.append(item);
+          });
+        }
+
+        // Pied de page
+        footer.replaceChildren();
+
+        const footerLeft = document.createElement('div');
+        footerLeft.className = 'wm-summary-footer-left';
 
         if (loadedCount < rows.length) {
-          footer.textContent = 'Chargement des prix moyens…';
+          footerLeft.textContent = 'Actualisation des cotes en arrière-plan…';
         } else if (!pricedRows.length) {
-          footer.textContent = 'Aucune carte n’a de prix moyen';
+          footerLeft.textContent = 'Aucune des cartes obtenues n’a de cote enregistrée.';
         } else {
-          footer.textContent = `Total des prix moyens connus : ${formatAverage(total)} W`;
+          footerLeft.textContent = `Total estimé du tirage : ${formatAverage(Math.round(totalEstimatedValue))} W`;
         }
 
         if (openAllError) {
-          const error = document.createElement('div');
-          error.className = 'wm-open-all-error';
-          error.textContent = openAllError;
-          footer.append(document.createElement('br'), error);
+          const errDiv = document.createElement('div');
+          errDiv.className = 'wm-open-all-error';
+          errDiv.textContent = openAllError;
+          footerLeft.append(document.createElement('br'), errDiv);
         }
+
+        const footerRight = document.createElement('div');
+        footerRight.className = 'wm-summary-footer-right';
+
+        const reloadBtn = document.createElement('button');
+        reloadBtn.type = 'button';
+        reloadBtn.className = 'wm-tool-button';
+        reloadBtn.textContent = 'Fermer et actualiser la page';
+        reloadBtn.addEventListener('click', () => {
+          overlay.remove();
+          location.reload();
+        });
+
+        const closeBtn = document.createElement('button');
+        closeBtn.type = 'button';
+        closeBtn.className = 'wm-tool-button wm-secondary-button';
+        closeBtn.textContent = 'Fermer';
+        closeBtn.addEventListener('click', () => {
+          overlay.remove();
+        });
+
+        footerRight.append(closeBtn, reloadBtn);
+        footer.append(footerLeft, footerRight);
       }
 
       function openOpenAllSummary(cards, openedPacks, error = null, options = {}) {
+        document.getElementById('wm-open-all-live')?.remove();
         document.getElementById('wm-open-all-overlay')?.remove();
 
         openAllSummaryCards = cards;
@@ -792,15 +1312,18 @@
         const modal = document.createElement('div');
         modal.className = 'wm-modal wm-open-all-modal';
 
+        // En-tête
         const header = document.createElement('div');
         header.className = 'wm-open-all-header';
 
         const headingWrap = document.createElement('div');
+        headingWrap.className = 'wm-ranking-heading-wrap';
 
         const title = document.createElement('h2');
         title.textContent = openAllSummaryTitle;
 
-        const subtitle = document.createElement('p');
+        const subtitle = document.createElement('div');
+        subtitle.className = 'wm-ranking-header-stats';
         subtitle.dataset.role = 'subtitle';
 
         headingWrap.append(title, subtitle);
@@ -824,8 +1347,8 @@
 
           try {
             onClose?.();
-          } catch (error) {
-            reportError('fermeture récap', error);
+          } catch (err) {
+            reportError('fermeture récap', err);
           }
 
           if (reloadOnClose) {
@@ -834,17 +1357,112 @@
         };
 
         closeButton.addEventListener('click', close);
-
         header.append(headingWrap, closeButton);
 
-        const list = document.createElement('div');
-        list.className = 'wm-open-all-list';
+        // Barre d'outils et de filtres
+        const toolbar = document.createElement('div');
+        toolbar.className = 'wm-open-all-toolbar';
 
+        // Vue switch Grille / Liste
+        const viewGroup = document.createElement('div');
+        viewGroup.className = 'wm-sale-mode-group';
+
+        const gridBtn = document.createElement('button');
+        gridBtn.type = 'button';
+        gridBtn.className = `wm-sale-mode-choice ${summaryViewMode === 'grid' ? 'is-active' : ''}`;
+        gridBtn.textContent = '⊞ Grille';
+
+        const listBtn = document.createElement('button');
+        listBtn.type = 'button';
+        listBtn.className = `wm-sale-mode-choice ${summaryViewMode === 'list' ? 'is-active' : ''}`;
+        listBtn.textContent = '☰ Liste';
+
+        gridBtn.addEventListener('click', () => {
+          summaryViewMode = 'grid';
+          gridBtn.classList.add('is-active');
+          listBtn.classList.remove('is-active');
+          renderOpenAllSummary();
+        });
+
+        listBtn.addEventListener('click', () => {
+          summaryViewMode = 'list';
+          listBtn.classList.add('is-active');
+          gridBtn.classList.remove('is-active');
+          renderOpenAllSummary();
+        });
+
+        viewGroup.append(gridBtn, listBtn);
+
+        // Recherche
+        const searchInput = document.createElement('input');
+        searchInput.type = 'search';
+        searchInput.className = 'wm-ranking-search-input';
+        searchInput.placeholder = 'Rechercher parmi les cartes obtenues…';
+        searchInput.setAttribute('aria-label', 'Rechercher par titre');
+        searchInput.addEventListener('input', () => {
+          summarySearchQuery = searchInput.value.trim();
+          renderOpenAllSummary();
+        });
+
+        // Filtre Rareté
+        const raritySelect = document.createElement('select');
+        raritySelect.className = 'wm-ranking-filter-rarity';
+        raritySelect.setAttribute('aria-label', 'Filtrer par rareté');
+        const rarities = [
+          ['', 'Toutes les raretés'],
+          ['L', 'Légendaires (L)'],
+          ['UR', 'Ultra Rares (UR)'],
+          ['SR', 'Super Rares (SR)'],
+          ['R', 'Rares (R)'],
+          ['PC', 'Peu Communes (PC)'],
+          ['C', 'Communes (C)']
+        ];
+        for (const [rVal, rLabel] of rarities) {
+          const opt = document.createElement('option');
+          opt.value = rVal;
+          opt.textContent = rLabel;
+          raritySelect.append(opt);
+        }
+        raritySelect.addEventListener('change', () => {
+          summaryRarityFilter = raritySelect.value;
+          renderOpenAllSummary();
+        });
+
+        // Tri
+        const sortSelect = document.createElement('select');
+        sortSelect.className = 'wm-sale-duration-select';
+        sortSelect.setAttribute('aria-label', 'Trier les cartes');
+        const sorts = [
+          ['price_desc', 'Prix décroissant'],
+          ['price_asc', 'Prix croissant'],
+          ['rarity', 'Rareté (L en premier)'],
+          ['chronological', 'Ordre de tirage']
+        ];
+        for (const [sVal, sLabel] of sorts) {
+          const opt = document.createElement('option');
+          opt.value = sVal;
+          opt.textContent = sLabel;
+          sortSelect.append(opt);
+        }
+        sortSelect.value = summarySortOrder;
+        sortSelect.addEventListener('change', () => {
+          summarySortOrder = sortSelect.value;
+          renderOpenAllSummary();
+        });
+
+        toolbar.append(viewGroup, searchInput, raritySelect, sortSelect);
+
+        // Conteneur dynamique (Grille ou Liste)
+        const container = document.createElement('div');
+        container.dataset.role = 'cards-container';
+        container.className = summaryViewMode === 'grid' ? 'wm-open-all-grid' : 'wm-open-all-list';
+
+        // Pied de page
         const footer = document.createElement('div');
         footer.className = 'wm-open-all-footer';
         footer.dataset.role = 'footer';
 
-        modal.append(header, list, footer);
+        modal.append(header, toolbar, container, footer);
         overlay.append(modal);
         document.body.append(overlay);
 
@@ -933,12 +1551,16 @@
         let priced = 0;
 
         for (const card of activePackRecap.cards) {
+          const rMeta = rarityMeta(card.rarity);
           const row = document.createElement('div');
           row.className = 'wm-pack-recap-row';
 
           const rarity = document.createElement('span');
           rarity.className = 'wm-pack-recap-rarity';
-          rarity.textContent = card.rarity || '—';
+          rarity.style.color = rMeta.color;
+          rarity.style.backgroundColor = rMeta.bg;
+          rarity.style.borderColor = rMeta.border;
+          rarity.textContent = rMeta.short;
 
           const name = document.createElement('span');
           name.className = 'wm-pack-recap-name';
@@ -993,7 +1615,6 @@
         runtime.pullStats.recordPullStats(cards);
         mergePulledCardsIntoCollectionCache(cards);
 
-        // Cache newly obtained cards even when the recap UI is disabled.
         runtime.priceLoader.loadCacheForCards(cards);
 
         if (!runtime.settings.isEnabled('packRecap')) return;
@@ -1011,15 +1632,12 @@
         }
       }
 
-
       document.addEventListener('click', (event) => {
         if (!isPullsPage() || !activePackRecap) return;
 
         const button = event.target?.closest?.('button');
         if (!button) return;
 
-        // Dès que l'utilisateur valide le widget de confirmation, on masque le
-        // récap du paquet précédent pour laisser la place à la suite.
         if (button.parentElement?.querySelector('input[name="website"]')) {
           packRecapDismissed = true;
           document.getElementById('wm-pack-recap')?.remove();
@@ -1034,6 +1652,14 @@
 
         if (detail.waiting) {
           setOpenAllButtonWaiting(detail.waitMs);
+          if (openAllIsManual) {
+            updateLiveOpeningProgress({
+              openedPacks: openAllOpenedPacks,
+              packsRemaining: detail.packsRemaining,
+              waiting: true,
+              waitMs: detail.waitMs
+            });
+          }
           return;
         }
 
@@ -1046,6 +1672,15 @@
         openAllSummaryCards.push(...packCards);
         mergePulledCardsIntoCollectionCache(packCards);
 
+        if (openAllIsManual) {
+          updateLiveOpeningProgress({
+            openedPacks: openAllOpenedPacks,
+            packsRemaining: detail.packsRemaining,
+            waiting: false
+          });
+          updateLiveOpeningCards(packCards);
+        }
+
         const uniquePackCards = [...new Map(packCards.map((card) => [card.id, card])).values()];
         try {
           runtime.priceLoader.loadCacheForCards(uniquePackCards);
@@ -1053,8 +1688,17 @@
           reportError('prix pendant tout ouvrir', error);
         }
       });
-      window.addEventListener('wm-average-pack-verification-needed', event => {
-        if (event.detail?.requestId === openAllRequestId && openAllButton?.isConnected) openAllButton.textContent = 'Vérification en attente…';
+
+      window.addEventListener('wm-average-pack-verification-needed', (event) => {
+        if (event.detail?.requestId === openAllRequestId && openAllButton?.isConnected) {
+          openAllButton.textContent = 'Vérification en attente…';
+          if (openAllLiveOverlay) {
+            const statusPill = openAllLiveOverlay.querySelector('[data-role="status-pill"]');
+            if (statusPill) {
+              statusPill.innerHTML = '<span class="wm-live-status-icon">🛡️</span> <span class="wm-live-status-text">Vérification demandée par WikiMasters…</span>';
+            }
+          }
+        }
       });
 
       window.addEventListener('wm-average-open-all-packs-result', (event) => {
@@ -1065,6 +1709,12 @@
 
         openAllActive = false;
         openAllRequestId = null;
+        document.getElementById('wm-open-all-live')?.remove();
+        openAllLiveOverlay = null;
+
+        if (openAllProgress) {
+          openAllProgress.hidden = true;
+        }
 
         if (openAllButton?.isConnected) {
           openAllButton.disabled = false;
@@ -1113,10 +1763,30 @@
         handlePackOpened(cards);
       });
 
-
       function onPriceUpdated(id) {
         if (activePackRecap?.cards?.some((card) => card.id === id)) renderPackRecap();
-        if (openAllSummaryCards.some((card) => card.id === id)) scheduleOpenAllSummaryRender();
+        if (openAllSummaryCards.some((card) => card.id === id)) {
+          scheduleOpenAllSummaryRender();
+          if (openAllLiveOverlay) {
+            const cardEl = openAllLiveOverlay.querySelector(`[data-role="cards-deck"]`);
+            if (cardEl) {
+              const entry = cacheMemory.get(id);
+              if (entry) {
+                const knownSum = openAllSummaryCards.reduce((sum, card) => {
+                  const e = cacheMemory.get(card.id);
+                  const avg = e ? chooseAverage(e, null, card.rarity || null) : null;
+                  return sum + (Number.isFinite(avg) ? avg : 0);
+                }, 0);
+                const statValue = openAllLiveOverlay.querySelector('[data-role="stat-value"]');
+                const statValuePill = openAllLiveOverlay.querySelector('[data-role="stat-value-pill"]');
+                if (knownSum > 0 && statValue && statValuePill) {
+                  statValue.textContent = `${formatAverage(Math.round(knownSum))} W`;
+                  statValuePill.style.display = 'inline-flex';
+                }
+              }
+            }
+          }
+        }
       }
 
       function isAutoOpenEnabled() {
